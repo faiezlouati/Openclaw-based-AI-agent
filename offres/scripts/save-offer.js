@@ -1,24 +1,5 @@
 #!/usr/bin/env node
-/**
- * save-offer.js
- * 
- * Usage:
- *   node save-offer.js <offre-id> [--cctp <path>] [--ccap <path>] [--buyer <name>] [--object <text>]
- * 
- * Example:
- *   node save-offer.js mutuelle-armee-datacenter-2026-05 \
- *     --cctp /path/to/cctp.pdf \
- *     --ccap /path/to/ccap.pdf \
- *     --buyer "Mutuelle de l'Armée Nationale" \
- *     --object "Modernisation du Data Center"
- * 
- * The script:
- * 1. Creates documents/[offre-id]/ and analyses/[offre-id]/ directories
- * 2. Copies source documents
- * 3. Extracts text from PDFs using PyMuPDF
- * 4. Creates empty analysis files from templates
- * 5. Updates index.md
- */
+
 
 const fs = require('fs');
 const path = require('path');
@@ -87,7 +68,7 @@ if (opts.ccap) {
   const dst = path.join(docDir, 'ccap.pdf');
   if (fs.existsSync(src)) {
     fs.copyFileSync(src, dst);
-    console.log(`✅ CCAP copied: ${dst}`);
+    console.log(` CCAP copied: ${dst}`);
     try {
       const txtDst = path.join(docDir, 'ccap.txt');
       execSync(`python3 -c "
@@ -98,12 +79,12 @@ for page in doc:
     text += page.get_text()
 print(text)
 " > "${txtDst}"`, { stdio: 'pipe' });
-      console.log(`✅ CCAP text extracted: ${txtDst}`);
+      console.log(`CCAP text extracted: ${txtDst}`);
     } catch (e) {
-      console.log(`⚠️  CCAP text extraction failed: ${e.message}`);
+      console.log(` CCAP text extraction failed: ${e.message}`);
     }
   } else {
-    console.log(`⚠️  CCAP file not found: ${src}`);
+    console.log(`  CCAP file not found: ${src}`);
   }
 }
 
@@ -122,7 +103,7 @@ function fillTemplate(templatePath, destPath, vars) {
     content = content.replace(/\[OBJET\]/g, vars.object);
     content = content.replace(/\[DATE\]/g, today);
     fs.writeFileSync(destPath, content);
-    console.log(`✅ Created: ${destPath}`);
+    console.log(` Created: ${destPath}`);
   }
 }
 
@@ -164,7 +145,7 @@ const rapportContent = `# Rapport Final — ${offreId}
 *Rapport créé le ${today}*
 `;
 fs.writeFileSync(rapportPath, rapportContent);
-console.log(`✅ Created: ${rapportPath}`);
+console.log(` Created: ${rapportPath}`);
 
 // Update index
 const dateStr = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -183,10 +164,10 @@ if (!indexContent.includes(offreId)) {
   if (insertAt > 0) {
     lines.splice(insertAt, 0, newLine);
     fs.writeFileSync(INDEX_FILE, lines.join('\n'));
-    console.log(`✅ Index updated: ${INDEX_FILE}`);
+    console.log(`Index updated: ${INDEX_FILE}`);
   }
 }
 
-console.log(`\n🎉 Offre "${offreId}" créée avec succès.`);
+console.log(`\n Offre "${offreId}" créée avec succès.`);
 console.log(`📂 Documents: ${docDir}`);
 console.log(`📋 Analyses: ${anaDir}`);
