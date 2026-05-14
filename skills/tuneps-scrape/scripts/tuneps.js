@@ -1,5 +1,6 @@
 require('dotenv').config();
 const https = require('https');
+const fs   = require('fs');
 
 //config 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
@@ -378,7 +379,27 @@ function displayResults(relevant, details, totalFetched, executionTime) {
 
     console.log();
     console.log(`  URL : ${url}`);
-    console.log();
+
+    const docDir = `/Users/albus/.openclaw/workspace/offres/documents/${ref}`;
+    const anaDir = `/Users/albus/.openclaw/workspace/offres/analyses/${ref}`;
+    const docFiles = fs.readdirSync(docDir).catch ? [] : (fs.existsSync(docDir) ? fs.readdirSync(docDir) : []);
+    const anaFiles = fs.readdirSync(anaDir).catch ? [] : (fs.existsSync(anaDir) ? fs.readdirSync(anaDir) : []);
+
+    const cctpDocs  = docFiles.filter(f => f.startsWith('cctp'));
+    const anaFiles2 = anaFiles.filter(f => f.endsWith('.md') || f.endsWith('.docx'));
+
+    if (cctpDocs.length > 0 || anaFiles2.length > 0) {
+      console.log();
+      console.log('  📎 DOCUMENTS & ANALYSES');
+      if (cctpDocs.length > 0) {
+        console.log('  ─ CCTP documents');
+        cctpDocs.forEach(f => console.log(`    📄 ${f}`));
+      }
+      if (anaFiles2.length > 0) {
+        console.log('  ─ Analyses');
+        anaFiles2.forEach(f => console.log(`    📊 ${f}`));
+      }
+    }
   });
 
   console.log(`${'─'.repeat(40)}`);

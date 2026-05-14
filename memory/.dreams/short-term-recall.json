@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "updatedAt": "2026-05-11T07:11:12.281Z",
+  "entries": {
+    "memory:memory/2026-05-11.md:1:7": {
+      "key": "memory:memory/2026-05-11.md:1:7",
+      "path": "memory/2026-05-11.md",
+      "startLine": 1,
+      "endLine": 7,
+      "source": "memory",
+      "snippet": "# 2026-05-11 Daily Log ## Tunisian Ministry Labels (Tuneps) - **defence** → Ministère de la Défense Nationale - **présidence** (prisédency in context) → Présidence du Gouvernement",
+      "recallCount": 1,
+      "dailyCount": 0,
+      "groundedCount": 0,
+      "totalScore": 0.6395248095228097,
+      "maxScore": 0.6395248095228097,
+      "firstRecalledAt": "2026-05-11T07:11:12.281Z",
+      "lastRecalledAt": "2026-05-11T07:11:12.281Z",
+      "queryHashes": [
+        "abdb11d52279"
+      ],
+      "recallDays": [
+        "2026-05-11"
+      ],
+      "conceptTags": [
+        "log",
+        "tunisian",
+        "ministry",
+        "labels",
+        "tuneps",
+        "defence",
+        "ministère",
+        "défense"
+      ]
+    }
+  }
+}
