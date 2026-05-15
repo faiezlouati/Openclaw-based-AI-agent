@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""
-build_ccap_docx.py — Generate CCAP (Cahier des Charges Administratives) analysis
-as a formatted Word document. Uses the same table style as build_cctp_docx.py:
-white header background + black text + blue borders.
-"""
+
 
 import sys
 from pathlib import Path
