@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""
-Build CCTP Relevance Analysis .docx
-Matches the refined CCTP_Analysis format: professional, structured, navy/blue palette.
-"""
+
 
 from docx import Document
 from docx.shared import Pt, RGBColor, Cm
