@@ -34,12 +34,12 @@ node scripts/tuneps.js DATE_FROM DATE_TO BUYER_FILTER DEADLINE_DAYS
 |-----------|-----------|---------|
 | nothing / today | today | today |
 | last 7 days | today minus 7 | today |
-| last month | today minus 30 | today |
 | this week | today minus 7 | today |
+| last month | first day of **previous calendar month** | last day of **previous calendar month** |
+| this month | first day of **current calendar month** | today |
 | this year | 2026-01-01 | today |
 | from X to Y | X | Y |
 | single date e.g. 2026-05-01 | that date | that date |
-| before June | first of current month | last day of current month |
 
 ### Deadline Filter → DEADLINE_DAYS
 

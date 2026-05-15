@@ -24,6 +24,7 @@ CORE BUSINESS (ALWAYS RELEVANT):
 - IP networks (core routers, aggregation switches, access switches)
 - Telecom infrastructure (4G/5G RAN, microwave transmission, fiber optics, GPON/EPON)
 - Cloud & Data Center (private cloud, public cloud, hyper-converged infrastructure, storage arrays)
+- Compute & Hosting platforms (servers, virtualization, platform infrastructure, application hosting)
 - Cybersecurity (firewalls, IPS/IDS, anti-DDoS, zero-trust solutions)
 - Enterprise communication (IPT, UC, contact centers)
 - AI platforms and computing infrastructure (AI servers, GPU clusters)
@@ -41,10 +42,11 @@ NOT RELEVANT (DO NOT BID):
 - CCTV cameras (unless part of a smart city or network project)
 
 EXCEPTION: A tender that includes "network", "infrastructure", "cloud", "data center",
-"telecom", "IP", "routing", "switching", "fiber", "5G", "4G", "cybersecurity", "firewall"
+"telecom", "IP", "routing", "switching", "fiber", "5G", "4G", "cybersecurity", "firewall",
+"plateforme", "héberger", "hébergement", "serveur", "serveurs", "virtualisation",
+"application hosting", "datacenter", "serveur", "stockage"
 is ALWAYS RELEVANT, even if it also includes other items.
 
-Tenders for "IT equipment" without specifying "network" or "infrastructure" are NOT RELEVANT.
 Tenders for "computer equipment" or "bureautique" are NOT RELEVANT.
 
 Return ONLY a JSON array of the numbers of relevant tenders.
@@ -80,6 +82,26 @@ function groqRequest(body) {
     req.write(data);
     req.end();
   });
+}
+
+async function translateText(text) {
+  if (!text || text === 'N/A' || text === 'Sans titre') return text;
+  if (!GROQ_API_KEY) return text;
+  try {
+    const res = await groqRequest({
+      model: GROQ_MODEL,
+      messages: [{
+        role: 'user',
+        content: `Translate the following French text to English. Return ONLY the English translation, nothing else:\n\n"${text.replace(/"/g, '\\"')}"`
+      }],
+      max_tokens: 256,
+      temperature: 0,
+    });
+    const en = res.choices?.[0]?.message?.content?.trim();
+    return en || text;
+  } catch {
+    return text;
+  }
 }
 
 function httpsPost(hostname, path, body, headers={}) {
@@ -322,17 +344,17 @@ async function fetchDetail(tender) {
 }
 
 // STEP 4: DISPLAY RESULTS 
-function displayResults(relevant, details, totalFetched, executionTime) {
+async function displayResults(relevant, details, totalFetched, executionTime) {
   const date = new Date().toLocaleDateString('fr-TN');
 
   console.log();
   console.log('TUNEPS TENDER INTELLIGENCE REPORT');
-  console.log(`Period  : ${DATE_FROM}  to  ${DATE_TO}`);
+  console.log(`\x1b[1mPeriod\x1b[0m  : ${DATE_FROM}  to  ${DATE_TO}`);
   if (BUYER_FILTER)  console.log(`Buyer   : ${BUYER_FILTER}`);
   if (DEADLINE_DAYS) console.log(`Deadline: ${DEADLINE_DAYS > 0 ? `next ${DEADLINE_DAYS} days` : `expired last ${Math.abs(DEADLINE_DAYS)} days`}`);
-  console.log(`Scanned : ${totalFetched} tender(s) fetched `);
-  console.log(`Date    : ${date}`);
-  console.log(`Results : ${relevant.length} relevant tender(s) identified`);
+  console.log(`\x1b[1mScanned\x1b[0m : ${totalFetched} tender(s) fetched `);
+  console.log(`\x1b[1mDate\x1b[0m    : ${date}`);
+  console.log(`\x1b[1mResults\x1b[0m : ${relevant.length} relevant tender(s) identified`);
   console.log();
 
   if (relevant.length === 0) {
@@ -341,7 +363,7 @@ function displayResults(relevant, details, totalFetched, executionTime) {
     return;
   }
 
-  relevant.forEach((t, idx) => {
+  for (const [idx, t] of relevant.entries()) {
     const d   = details[idx] || {};
     const ref = t.bidNo || '-';
 
@@ -356,51 +378,62 @@ function displayResults(relevant, details, totalFetched, executionTime) {
     const url = `https://www.tuneps.tn/portail/offres/details/${t.epBidMasterId}/${t.bidNo}`;
     const guarantees = d._guarantees || [];
 
+    const titleEn      = await translateText(title);
+    const authorityEn  = await translateText(authority);
+
+    // Translate standard French procurement terms to English
+    const PROC_MAP = {
+      'Appel d\'offres ouvert':        'Open Tender',
+      'Appel d\'offres restreint':      'Restricted Tender',
+      'Appel d\'offres national':       'National Open Tender',
+      'Appel d\'offres international': 'International Open Tender',
+      'Consultation':                   'Request for Quotation',
+      'Marché négocié':                'Negotiated Procurement',
+    };
+    const EVAL_MAP = {
+      'Moins disant':         'Lowest Compliant Bid',
+      'Moins-disants':        'Lowest Compliant Bids',
+      'Prix le plus bas':     'Lowest Price',
+      'Meilleure rapport qualité/prix': 'Best Value for Money',
+    };
+    const translate = (val, map) => map[val] || val;
+    const procEn  = translate(procedure,  PROC_MAP);
+    const CONS_MAP  = { 'Oui': 'Yes', 'Non': 'No' };
+    const INTL_MAP   = {
+      'Oui':                              'Yes',
+      'Non':                              'No',
+      'Appel d\'offres national (part dinar)': 'National (TND only)',
+      'Appel d\'offres international':     'International',
+    };
+    const evalEn  = translate(evaluation, EVAL_MAP);
+    const consEn  = translate(consortium,  CONS_MAP);
+    const intlEn  = translate(intl,        INTL_MAP);
+
     console.log(`${'─'.repeat(40)}`);
-    console.log(`  TENDER ${String(idx + 1).padStart(2, '0')}  /  Ref: ${ref}`);
+    console.log(`  \x1b[1mTENDER ${String(idx + 1).padStart(2, '0')}  /  Ref:\x1b[0m ${ref}`);
     console.log(`${'─'.repeat(40)}`);
     console.log();
-    console.log(`  Title              : ${title}`);
-    console.log(`  Authority          : ${authority}`);
-    console.log(`  Publication Date   : ${pubDate}`);
-    console.log(`  Submission Deadline: ${deadline}`);
-    console.log(`  Procedure          : ${procedure}`);
-    console.log(`  Evaluation Method  : ${evaluation}`);
-    console.log(`  Consortium Allowed : ${consortium}`);
-    console.log(`  International Bid  : ${intl}`);
+    console.log(`  \x1b[1mTitle\x1b[0m              : ${titleEn}`);
+    console.log(`  \x1b[1mAuthority\x1b[0m          : ${authorityEn}`);
+    console.log(`  \x1b[1mPublication Date\x1b[0m   : ${pubDate}`);
+    console.log(`  \x1b[1mSubmission Deadline\x1b[0m: ${deadline}`);
+    console.log(`  \x1b[1mProcedure\x1b[0m          : ${procEn}`);
+    console.log(`  \x1b[1mEvaluation Method\x1b[0m  : ${evalEn}`);
+    console.log(`  \x1b[1mConsortium Allowed\x1b[0m : ${consEn}`);
+    console.log(`  \x1b[1mInternational Bid\x1b[0m  : ${intlEn}`);
 
     if (guarantees.length > 0) {
       console.log();
-      console.log(`  Guarantees (Cautionnement provisoire):`);
+      console.log(`  \x1b[1mProvisional Guarantee\x1b[0m:`);
       guarantees.forEach((g, i) => {
-        console.log(`    Lot ${i + 1} : ${g}`);
+        console.log(`    \x1b[1mLot ${i + 1}\x1b[0m : ${g}`);
       });
     }
 
     console.log();
-    console.log(`  URL : ${url}`);
+    console.log(`  \x1b[1mURL\x1b[0m : https://www.tuneps.tn/portail/offres/details/${t.epBidMasterId}/${ref}`);
 
-    const docDir = `/Users/albus/.openclaw/workspace/offres/documents/${ref}`;
-    const anaDir = `/Users/albus/.openclaw/workspace/offres/analyses/${ref}`;
-    const docFiles = fs.readdirSync(docDir).catch ? [] : (fs.existsSync(docDir) ? fs.readdirSync(docDir) : []);
-    const anaFiles = fs.readdirSync(anaDir).catch ? [] : (fs.existsSync(anaDir) ? fs.readdirSync(anaDir) : []);
-
-    const cctpDocs  = docFiles.filter(f => f.startsWith('cctp'));
-    const anaFiles2 = anaFiles.filter(f => f.endsWith('.md') || f.endsWith('.docx'));
-
-    if (cctpDocs.length > 0 || anaFiles2.length > 0) {
-      console.log();
-      console.log('  📎 DOCUMENTS & ANALYSES');
-      if (cctpDocs.length > 0) {
-        console.log('  ─ CCTP documents');
-        cctpDocs.forEach(f => console.log(`    📄 ${f}`));
-      }
-      if (anaFiles2.length > 0) {
-        console.log('  ─ Analyses');
-        anaFiles2.forEach(f => console.log(`    📊 ${f}`));
-      }
-    }
-  });
+  }
 
   console.log(`${'─'.repeat(40)}`);
   console.log(`  ${relevant.length} tender(s) displayed  |  Execution time: ${executionTime}s`);
@@ -427,7 +460,7 @@ async function main() {
   if (tenders.length === 0) {
     console.log();
     console.log('TUNEPS TENDER INTELLIGENCE REPORT');
-    console.log(`Period  : ${DATE_FROM}  to  ${DATE_TO}`);
+    console.log(`\x1b[1mPeriod\x1b[0m  : ${DATE_FROM}  to  ${DATE_TO}`);
     if (BUYER_FILTER)  console.log(`Buyer   : ${BUYER_FILTER}`);
     if (DEADLINE_DAYS) console.log(`Deadline: ${DEADLINE_DAYS > 0 ? `next ${DEADLINE_DAYS} days` : `expired last ${Math.abs(DEADLINE_DAYS)} days`}`);
     console.log(`Scanned : ${totalFetched} tender(s) fetched from API`);
@@ -446,7 +479,7 @@ async function main() {
     const executionTime = ((Date.now() - start) / 1000).toFixed(1);
     console.log();
     console.log('TUNEPS TENDER INTELLIGENCE REPORT');
-    console.log(`Period  : ${DATE_FROM}  to  ${DATE_TO}`);
+    console.log(`\x1b[1mPeriod\x1b[0m  : ${DATE_FROM}  to  ${DATE_TO}`);
     if (BUYER_FILTER)  console.log(`Buyer   : ${BUYER_FILTER}`);
     if (DEADLINE_DAYS) console.log(`Deadline: ${DEADLINE_DAYS > 0 ? `next ${DEADLINE_DAYS} days` : `expired last ${Math.abs(DEADLINE_DAYS)} days`}`);
     console.log(`Scanned : ${totalFetched} tender(s) fetched from API`);
@@ -471,7 +504,7 @@ async function main() {
 
   // Step 4 — display
   const executionTime = ((Date.now() - start) / 1000).toFixed(1);
-  displayResults(aiRelevant, details, totalFetched, executionTime);
+  await displayResults(aiRelevant, details, totalFetched, executionTime);
 }
 
 main().catch(e => {
