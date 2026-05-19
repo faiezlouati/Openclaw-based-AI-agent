@@ -44,19 +44,26 @@ Skills are shared. Your setup is yours. Keeping them apart means you can update 
 - `CCK` → **Centre de Calcul El-Khawarizmi**
 - _(add more as you discover them)_
 
+### Tuneps CCTP/CCAP Document Rule (Critical — Must Follow Forever)
+
+**After every scan, before displaying results:**
+1. For each relevant tender, check if CCTP/CCAP documents exist locally at:
+   `offres/documents/{REF}/cctp.txt` or `cctp.pdf`
+   `offres/documents/{REF}/ccap.txt` or `ccap.pdf`
+   And also at:
+   `offres/analyses/{REF}/cctp_analyse.md`
+   `offres/analyses/{REF}/ccap_analyse.md`
+2. **If documents exist:** Send them as direct file attachments to the chat (NOT paths — use MEDIA with full absolute paths)
+3. **If documents do NOT exist:** Tell the user "No CCTP/CCAP documents found for this tender"
+4. **Never send file paths in chat** — always attach files directly as MEDIA
+
 ### Tuneps Scan Workflow (Strict Rule)
 
-**Your job is only 3 steps:**
+**Your job is only these steps:**
 1. **Parse input** → convert user request to script arguments
 2. **Run script** → execute `node scripts/tuneps.js ...` exactly as built
 3. **Display result** → show script output as-is, no modification
-
-**Never:**
-- Re-run script to verify or debug
-- Run additional ad-hoc queries to check results
-- Second-guess the output or dig deeper
-
-If the result is 0 tenders, that's the result. Move on.
+4. **Check CCTP/CCAP** → for each relevant tender, check for local documents and attach them directly or report none found
 
 ### Skills / Workflows
 

@@ -41,11 +41,9 @@ NOT RELEVANT (DO NOT BID):
 - Simple cabling or electrical works (unless part of a network project)
 - CCTV cameras (unless part of a smart city or network project)
 
-EXCEPTION: A tender that includes "network", "infrastructure", "cloud", "data center",
-"telecom", "IP", "routing", "switching", "fiber", "5G", "4G", "cybersecurity", "firewall",
-"plateforme", "héberger", "hébergement", "serveur", "serveurs", "virtualisation",
-"application hosting", "datacenter", "serveur", "stockage"
-is ALWAYS RELEVANT, even if it also includes other items.
+EXCEPTION: A tender that includes "network infrastructure", "IT infrastructure", "telecom infrastructure",
+"cloud infrastructure", or "data center infrastructure" is ALWAYS RELEVANT, even if it also
+includes other items.
 
 Tenders for "computer equipment" or "bureautique" are NOT RELEVANT.
 
