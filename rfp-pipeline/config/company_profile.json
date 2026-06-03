@@ -1,0 +1,119 @@
+{
+  "company_name": "Huawei Technologies Tunisia",
+  "sector": "ICT Infrastructure Provider",
+  "description": "Premium ICT infrastructure provider specializing in enterprise and carrier-grade network equipment, data center solutions, cybersecurity, and digital transformation projects. Does NOT sell standard computers, printers, or office supplies.",
+  "product_lines": [
+    {
+      "name": "IP Networks",
+      "description": "Enterprise and carrier routing, switching, LAN/WAN infrastructure",
+      "keywords": [
+        "routeur", "switch", "commutateur", "LAN", "WAN", "MPLS", "backbone",
+        "agrégation", "accès", "réseau IP", "IPv4", "IPv6", "VLAN", "spanning tree",
+        "BGP", "OSPF", "routing", "switching", "top of rack", "datacenter switch",
+        "switch datacenter", "switch niveau 3", "switch coeur", "switch distribution"
+      ],
+      "weight": 1.0
+    },
+    {
+      "name": "Telecom Infrastructure",
+      "description": "4G/5G RAN, fiber optics, microwave transmission, optical transport",
+      "keywords": [
+        "4G", "5G", "RAN", "fibre optique", "fibre", "fiber", "GPON", "EPON",
+        "FTTH", "FTTX", "microwave", "transmission", "télécommunication",
+        "faisceaux hertziens", "NMS", "OSS", "BSS", "OTN", "WDM", "DWDM",
+        "liaison radio", "antenne", "station de base"
+      ],
+      "weight": 1.0
+    },
+    {
+      "name": "Cloud and Data Center",
+      "description": "Servers, storage, virtualization, backup, cloud platforms, HCI",
+      "keywords": [
+        "serveur", "server", "datacenter", "data center", "cloud", "virtualisation",
+        "hyperviseur", "stockage", "baie de stockage", "storage", "HCI",
+        "hyper-convergé", "SAN", "NAS", "RAID", "VMware", "vSphere", "ESXi",
+        "Proxmox", "Hyper-V", "sauvegarde", "backup", "restauration", "snapshot",
+        "réplication", "disaster recovery", "PRA", "PCA", "DDR5", "NVMe",
+        "serveur de virtualisation", "serveur de sauvegarde"
+      ],
+      "weight": 1.0
+    },
+    {
+      "name": "Cybersecurity",
+      "description": "Next-gen firewalls, IPS/IDS, VPN, zero-trust, SOC, SIEM",
+      "keywords": [
+        "firewall", "pare-feu", "IPS", "IDS", "anti-DDoS", "VPN", "IPSEC",
+        "SSL VPN", "zero trust", "SOC", "SIEM", "antivirus", "anti-malware",
+        "sandboxing", "filtrage web", "filtrage DNS", "authentification",
+        "PKI", "chiffrement", "AES", "certificat", "NAT", "UTM",
+        "prévention intrusion", "détection intrusion", "Magic Quadrant firewall",
+        "Gartner firewall", "NGFW", "next generation firewall"
+      ],
+      "weight": 1.0
+    },
+    {
+      "name": "Enterprise Communication",
+      "description": "IP telephony, unified communications, contact centers, video conferencing",
+      "keywords": [
+        "IPT", "téléphonie IP", "UC", "unified communications", "contact center",
+        "visioconférence", "collaboration", "messagerie unifiée", "IPBX",
+        "softphone", "WebRTC"
+      ],
+      "weight": 0.8
+    },
+    {
+      "name": "AI and Computing",
+      "description": "AI servers, GPU clusters, HPC, AI inference platforms",
+      "keywords": [
+        "intelligence artificielle", "GPU", "IA", "machine learning",
+        "deep learning", "calcul haute performance", "HPC",
+        "plateforme IA", "serveur GPU", "inférence", "entraînement modèle",
+        "cluster GPU", "NVIDIA", "accélérateur"
+      ],
+      "weight": 0.9
+    },
+    {
+      "name": "System Integration",
+      "description": "IT infrastructure deployment, migration, consulting, managed services",
+      "keywords": [
+        "intégration", "déploiement", "mise en oeuvre", "mise en service",
+        "installation", "configuration", "migration", "consultant",
+        "assistance technique", "MOE", "MOA", "ingénierie", "infogérance",
+        "transfert de compétences", "formation certifiante"
+      ],
+      "weight": 0.7
+    }
+  ],
+  "exclusion_keywords": [
+    "médical", "hospitalier", "médicament", "réactif", "chirurgie",
+    "alimentaire", "restauration", "catering", "denrée", "repas",
+    "construction", "bâtiment", "travaux", "génie civil", "maçonnerie",
+    "véhicule", "voiture", "camion", "bus", "carburant",
+    "mobilier", "chaise", "meuble", "bureau",
+    "habillement", "vêtement", "chaussure", "uniforme",
+    "agriculture", "semence", "engrais", "élevage",
+    "nettoyage", "entretien des locaux", "balayage",
+    "imprimante", "photocopieur", "scanner",
+    "ordinateur portable", "laptop", "PC bureautique",
+    "fournitures de bureau", "papeterie", "cartouche"
+  ],
+  "scoring_rules": {
+    "high_relevance_threshold": 70,
+    "medium_relevance_threshold": 40,
+    "low_relevance_threshold": 20
+  },
+  "recommendation_rules": {
+    "BID": "relevance_score >= 70",
+    "REVIEW": "relevance_score >= 40 and relevance_score < 70",
+    "SKIP": "relevance_score < 40"
+  },
+  "rag_queries": [
+    "équipements réseau switches routeurs infrastructure IP LAN WAN datacenter",
+    "serveurs datacenter cloud virtualisation stockage hyperviseur sauvegarde backup",
+    "firewall cybersécurité sécurité réseau IPS VPN antivirus sandboxing",
+    "fibre optique télécom 4G 5G transmission microwave GPON FTTH",
+    "intelligence artificielle GPU computing IA plateforme HPC cluster",
+    "intégration système consulting IT infrastructure déploiement migration",
+    "armoires informatiques baie câblage salle serveurs infrastructure physique"
+  ]
+}

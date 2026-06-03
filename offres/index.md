@@ -1,31 +1,31 @@
 # 📁 Offres — Offres Register
 
-Ce fichier est le registre central de toutes les offres analysées.
-Chaque offre reçoit un dossier propre dans `documents/` et `analyses/`.
+Ce fichier est conservé comme aide de compatibilité.
+La source de vérité unique est maintenant `~/.tuneps_data/` avec la base SQLite `~/.tuneps_data/db/tenders.db`.
+Chaque offre reçoit un dossier propre dans `~/.tuneps_data/documents/` et `~/.tuneps_data/analyses/`.
 
 ---
 
 ## Structure de données
 
 ```
-offres/
-├── index.md                          ← Ce fichier (registre global)
-├── documents/                         ← Documents originaux uploadés
+~/.tuneps_data/
+├── db/tenders.db                     ← Registre global SQLite
+├── documents/                        ← Documents originaux uploadés
 │   └── [offre-id]/
 │       ├── cctp.pdf                  ← CCTP original
 │       ├── cctp.txt                  ← Texte extrait
 │       ├── ccap.pdf                  ← CCAP original (si dispo)
 │       ├── ccap.txt                  ← Texte extrait (si dispo)
-│       └── architecture.png           ← Diagramme d'architecture (si dispo)
+│       └── architecture.png          ← Diagramme d'architecture (si dispo)
 ├── analyses/                         ← Analyses structurées
 │   └── [offre-id]/
+│       ├── analysis.json             ← Résultat RAG canonique
 │       ├── cctp_analyse.md           ← Analyse CCTP
 │       ├── ccap_analyse.md           ← Analyse CCAP
 │       ├── rapport_final.md          ← Rapport combiné CCTP+CCAP
-│       └── compliance_table.md      ← Grille de conformité
-└── templates/
-    ├── cctp_analyse_template.md      ← Template analyse CCTP
-    └── ccap_analyse_template.md      ← Template analyse CCAP
+│       └── report.html               ← Rapport RFP/RAG si généré
+└── rfp-pipeline/                     ← Pipeline parsing/chunking/RAG      ← Template analyse CCAP
 ```
 
 ---

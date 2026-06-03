@@ -164,19 +164,20 @@ Overall assessment:
 1. **Receive** raw documents (PDF/text) for the tender
 2. **Identify** tender reference from filename or TUNEPS metadata
 3. **Determine** document type: CCAP (administrative) or CCTP (technical) or both
-4. **Copy** source documents to:
-   - `offres/documents/<ref>/cctp.pdf` or `cctp.txt`
-   - `offres/documents/<ref>/ccap.pdf` or `ccap.txt`
-5. **Generate** CCAP analysis if administrative document available:
+4. **Copy** source documents to the single storage root:
+   - `~/.tuneps_data/documents/<ref>/cctp.pdf` or `cctp.txt`
+   - `~/.tuneps_data/documents/<ref>/ccap.pdf` or `ccap.txt`
+5. **Run RFP/RAG analysis**:
+   - `python3 ~/.openclaw/workspace/skills/rag-analyse/scripts/rag_analyse.py <ref> <doc_path> <doc_type>`
+6. **Generate** CCAP analysis if administrative document available:
    - Read and translate key sections
    - Populate 8-section template
-   - Run: `python3 scripts/build_ccap_docx.py <ref> <output_dir>`
-6. **Generate** CCTP analysis if technical document available:
+   - Output to `~/.tuneps_data/analyses/<ref>/`
+7. **Generate** CCTP analysis if technical document available:
    - Read technical specifications
    - Populate 5-section template
-   - Run: `python3 scripts/build_cctp_docx.py <ref> <output_dir>`
-7. **Update** `offres/analyses/<ref>/` with both analysis files
-8. **Update** display in Tuneps scan to show documents for that tender ref
+   - Output to `~/.tuneps_data/analyses/<ref>/`
+8. **Update** display in Tuneps scan to show document and analysis status for that tender ref
 
 ---
 
@@ -184,5 +185,8 @@ Overall assessment:
 - Analysis templates: `~/.openclaw/workspace/skills/tuneps-scrape/TEMPLATE.md` (this file)
 - CCAP generator: `~/.openclaw/workspace/skills/tuneps-scrape/scripts/build_ccap_docx.py`
 - CCTP generator: `~/.openclaw/workspace/skills/tuneps-scrape/scripts/build_cctp_docx.py`
-- Tender documents: `offres/documents/<ref>/`
-- Analysis outputs: `offres/analyses/<ref>/`
+- Tender documents: `~/.tuneps_data/documents/<ref>/`
+- Analysis outputs: `~/.tuneps_data/analyses/<ref>/`
+- Database: `~/.tuneps_data/db/tenders.db`
+- RFP pipeline code: `~/.openclaw/workspace/rfp-pipeline/`
+- RFP pipeline data/state: `~/.tuneps_data/rfp-pipeline/`

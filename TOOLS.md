@@ -1,6 +1,9 @@
 # TOOLS.md - Local Notes
 
-Skills define _how_ tools work. This file is for _your specifics — the stuff that's unique to your setup.
+## RED LINES (STRICT — NEVER CROSS)
+
+- **NEVER send any message (WhatsApp, email, Telegram, Signal, etc.) unless the user explicitly asks for it**
+- If you sent something unprompted → apologize and update this rule immediately
 
 ## What Goes Here
 
@@ -40,30 +43,45 @@ Skills are shared. Your setup is yours. Keeping them apart means you can update 
 **Tuneps does NOT recognize raw nicknames or abbreviations.** Always map user-provided ministry nicknames and abbreviations to their official full names before searching or filtering.
 
 - `défense` → **Ministère de la Défense Nationale**
+- `mod` → **Ministère de la Défense Nationale**
 - `présidence` → **Présidence du Gouvernement**
 - `CCK` → **Centre de Calcul El-Khawarizmi**
 - _(add more as you discover them)_
 
-### Tuneps CCTP/CCAP Document Rule (Critical — Must Follow Forever)
+### WhatsApp Bot Number
 
-**After every scan, before displaying results:**
-1. For each relevant tender, check if CCTP/CCAP documents exist locally at:
-   `offres/documents/{REF}/cctp.txt` or `cctp.pdf`
-   `offres/documents/{REF}/ccap.txt` or `ccap.pdf`
-   And also at:
-   `offres/analyses/{REF}/cctp_analyse.md`
-   `offres/analyses/{REF}/ccap_analyse.md`
-2. **If documents exist:** Send them as direct file attachments to the chat (NOT paths — use MEDIA with full absolute paths)
-3. **If documents do NOT exist:** Tell the user "No CCTP/CCAP documents found for this tender"
-4. **Never send file paths in chat** — always attach files directly as MEDIA
+- **Bot number:** 54428397 (used as WhatsApp account for the bot)
+- **Allowlist:** +21656771913, +21653117541
+
+### Tuneps Data Storage Rule (STRICT)
+
+**Use exactly one storage root for tender/RFP data:** `~/.tuneps_data/`
+
+- Documents: `~/.tuneps_data/documents/<ref>/`
+- Analyses: `~/.tuneps_data/analyses/<ref>/`
+- Database: `~/.tuneps_data/db/tenders.db`
+- RFP pipeline data/state: `~/.tuneps_data/rfp-pipeline/`
+- RFP pipeline code: `~/.openclaw/workspace/rfp-pipeline/`
+- Exports: `~/.tuneps_data/exports/`
+
+`~/.openclaw/workspace` is for code, skills, prompts, and templates only. Do not create new active tender data folders under workspace. Existing `workspace/offres/documents` and `workspace/offres/analyses` are symlinks into `~/.tuneps_data` for compatibility.
+
+### Tuneps Output Rule (STRICT — NON-NEGOTIABLE)
+
+**This rule is FOREVER. No exceptions. No interpretation.**
+
+When running `scan tuneps`:
+
+1. **Copy-paste the script output VERBATIM** — do NOT reformat, do NOT translate, do NOT add headers, do NOT add bullet points, do NOT add your own labels
+2. **Never wrap the output in your own formatting** — no headers like "Tuneps Scan — Today", no bullet lists, no emojis as headers, no French/English translation of field labels
+3. **If the script outputs French** → display French. **If the script outputs English** → display English. Do NOT convert.
 
 ### Tuneps Scan Workflow (Strict Rule)
 
 **Your job is only these steps:**
 1. **Parse input** → convert user request to script arguments
 2. **Run script** → execute `node scripts/tuneps.js ...` exactly as built
-3. **Display result** → show script output as-is, no modification
-4. **Check CCTP/CCAP** → for each relevant tender, check for local documents and attach them directly or report none found
+3. **Display result** → show script output EXACTLY as-is — no modification
 
 ### Skills / Workflows
 
@@ -71,7 +89,7 @@ Skills are shared. Your setup is yours. Keeping them apart means you can update 
   1. Parse date range, deadline filter, and ministry nicknames from user message
   2. Map ministry nicknames to official names (see mapping above)
   3. Run `cd ~/.openclaw/workspace/skills/tuneps-scrape && node scripts/tuneps.js FROM_DATE DATE_TO BUYER_FILTER DEADLINE_DAYS`
-  4. Display the output exactly as printed — no summary, no modification
+  4. Display the output EXACTLY as printed — no summary, no modification
 
 ---
 

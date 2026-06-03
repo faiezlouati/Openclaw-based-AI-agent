@@ -72,15 +72,19 @@ If user references a specific ministry, set BUYER_FILTER to the official name.
 2. Extract DEADLINE_DAYS from deadline/-opening expressions
 3. Map any ministry nickname to official name → BUYER_FILTER
 
-### Step 2 - Run the script
+### Step 2 - Run the script with --output
 
 ```
-cd ~/.openclaw/workspace/skills/tuneps-scrape && node scripts/tuneps.js DATE_FROM DATE_TO BUYER_FILTER DEADLINE_DAYS
+cd ~/.openclaw/workspace/skills/tuneps-scrape && node scripts/tuneps.js DATE_FROM DATE_TO BUYER_FILTER DEADLINE_DAYS --output /tmp/tuneps_output.txt
 ```
 
-### Step 3 - Display output
+**Cache:** Results are cached for 1 month at `/tmp/tuneps_cache/{hash}.json` (key = MD5 of args). Running the same query again returns cached text instantly.
 
-Display the full script output exactly as printed — no summary, no modification.
+### Step 3 - Read and display the output
+
+After the script completes, read the file at `/tmp/tuneps_output.txt` and display its contents **exactly as-is** in your message (as the first message, not as a tool result).
+
+### Step 4 - Done
 
 ## Authority Abbreviations
 
@@ -88,6 +92,18 @@ When tenders reference abbreviated authority names, resolve them using:
 `~/.openclaw/workspace/skills/tuneps-scrape/references/abbreviations.md`
 
 Known abbreviations include CCK (Centre de Calcul El-Khawarizmi), ONP (Office National des Postes), DGDD (Direction Générale de la Douane), CRDA, OTAM, OMM, INS, CNI, CNR, and more.
+
+## Unified RFP Storage
+
+Tender/RFP data must use the single storage root:
+
+- Documents: `~/.tuneps_data/documents/<ref>/`
+- Analyses: `~/.tuneps_data/analyses/<ref>/`
+- Database: `~/.tuneps_data/db/tenders.db`
+- RFP pipeline data/state: `~/.tuneps_data/rfp-pipeline/`
+- RFP pipeline code: `~/.openclaw/workspace/rfp-pipeline/`
+
+Do not create active tender data under `~/.openclaw/workspace/offres`; its data folders are compatibility symlinks only.
 
 ## Rules
 - Always parse before running — never pass raw user input to the script

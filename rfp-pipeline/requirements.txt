@@ -1,0 +1,21 @@
+# RFP Pipeline dependencies
+# Install with: pip install -r requirements.txt
+
+# Step 1 — Parsing
+docling                # free, local, no API key — replaces llama-parse
+pymupdf                # extract embedded images from PDF for Mistral OCR
+mistralai              # Mistral OCR API (pass 2 — diagram images)
+python-dotenv          # loads MISTRAL_API_KEY and GROQ_API_KEY from .env
+
+# Step 2 — Cleaning
+ftfy
+
+# Step 3 — Chunking (install when building step3)
+# chonkie
+
+# Step 4 — Embeddings (install when building step4)
+sentence-transformers
+chromadb
+
+# Step 5 — LLM Analysis (install when building step5)
+# groq

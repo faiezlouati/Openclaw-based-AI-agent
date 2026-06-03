@@ -6,14 +6,63 @@ const fs   = require('fs');
 const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
 const GROQ_MODEL   = "llama-3.3-70b-versatile";
 
+// Output helpers — detect TTY vs non-TTY for bold + line width
+const IS_TTY = process.stdout.isTTY;
+const BOLD   = IS_TTY ? (text) => `\x1b[1m${text}\x1b[0m` : (text) => `**${text}**`;
+const WIDTH  = (process.stdout.columns && process.stdout.columns > 10) ? process.stdout.columns : 35;
+const LINE  = (char = '─') => char.repeat(WIDTH);
+
 function today() {
   return new Date().toISOString().slice(0,10);
+}
+
+// Cache config
+const CACHE_DIR   = '/tmp/tuneps_cache';
+const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 1 month
+
+function getCacheKey() {
+  const crypto = require('crypto');
+  const key = [DATE_FROM, DATE_TO, BUYER_FILTER, DEADLINE_DAYS].join('|');
+  return crypto.createHash('md5').update(key).digest('hex');
+}
+
+function cacheGet(key) {
+  try {
+    const file = `${CACHE_DIR}/${key}.json`;
+    if (!require('fs').existsSync(file)) return null;
+    const stat = require('fs').statSync(file);
+    if (Date.now() - stat.mtimeMs > CACHE_TTL_MS) return null;
+    return require(file);
+  } catch { return null; }
+}
+
+function cacheSet(key, data) {
+  try {
+    require('fs').mkdirSync(CACHE_DIR, { recursive: true });
+    require('fs').writeFileSync(`${CACHE_DIR}/${key}.json`, JSON.stringify(data, null, 2));
+  } catch {}
 }
 
 const DATE_FROM     = process.argv[2] || today();
 const DATE_TO       = process.argv[3] || DATE_FROM;
 const BUYER_FILTER  = process.argv[4] || "";
 const DEADLINE_DAYS = parseInt(process.argv[5]) || 0;
+
+// Handle --output flag: redirects stdout to a file instead of terminal
+let outputFile = null;
+const remainingArgs = process.argv.slice(6);
+const outputIdx = remainingArgs.indexOf('--output');
+if (outputIdx !== -1 && remainingArgs[outputIdx + 1]) {
+  outputFile = remainingArgs[outputIdx + 1];
+}
+
+// If outputFile set, override console.log to write synchronously to file
+if (outputFile) {
+  const ffs = require('fs');
+  ffs.writeFileSync(outputFile, ''); // clear file first
+  console.log = (...args) => ffs.appendFileSync(outputFile, args.join(' ') + '\n');
+  console.error = (...args) => ffs.appendFileSync(outputFile, args.join(' ') + '\n');
+}
 
 //company profile
 
@@ -204,7 +253,12 @@ async function fetchTenders() {
       dataSearch: [
         { key: "publicYn", value: "Y",        specificSearch: "=" },
         { key: "publicDt", value: DATE_FROM,  specificSearch: ">=" },
-        { key: "publicDt", value: DATE_TO,    specificSearch: "<=" }
+        { key: "publicDt", value: DATE_TO,    specificSearch: "<=" },
+        ...(
+          BUYER_FILTER && !BUYER_FILTER.includes('|')
+            ? [{ key: "bidInstNm", value: BUYER_FILTER, specificSearch: "like" }]
+            : []
+        )
       ],
       pagination: { limit: 50, offSet: page },
       sort: { nameCol: "publicDt", direction: "desc nulls last" }
@@ -341,18 +395,18 @@ async function fetchDetail(tender) {
   }
 }
 
-// STEP 4: DISPLAY RESULTS 
-async function displayResults(relevant, details, totalFetched, executionTime) {
+// STEP 4: DISPLAY RESULTS (TEXT)
+async function displayResultsText(relevant, details, totalFetched, executionTime) {
   const date = new Date().toLocaleDateString('fr-TN');
 
   console.log();
   console.log('TUNEPS TENDER INTELLIGENCE REPORT');
-  console.log(`\x1b[1mPeriod\x1b[0m  : ${DATE_FROM}  to  ${DATE_TO}`);
-  if (BUYER_FILTER)  console.log(`Buyer   : ${BUYER_FILTER}`);
+  console.log(`${BOLD('Period')}  : ${DATE_FROM}  to  ${DATE_TO}`);
+  if (BUYER_FILTER)  console.log(`${BOLD('Buyer')}   : ${BUYER_FILTER}`);
   if (DEADLINE_DAYS) console.log(`Deadline: ${DEADLINE_DAYS > 0 ? `next ${DEADLINE_DAYS} days` : `expired last ${Math.abs(DEADLINE_DAYS)} days`}`);
-  console.log(`\x1b[1mScanned\x1b[0m : ${totalFetched} tender(s) fetched `);
-  console.log(`\x1b[1mDate\x1b[0m    : ${date}`);
-  console.log(`\x1b[1mResults\x1b[0m : ${relevant.length} relevant tender(s) identified`);
+  console.log(`${BOLD('Scanned')} : ${totalFetched} tender(s) fetched `);
+  console.log(`${BOLD('Date')}    : ${date}`);
+  console.log(`${BOLD('Results')} : ${relevant.length} relevant tender(s) identified`);
   console.log();
 
   if (relevant.length === 0) {
@@ -373,13 +427,11 @@ async function displayResults(relevant, details, totalFetched, executionTime) {
     const evaluation = d.evalMethodStrFr     || d.evalMethodStrEn     || 'N/A';
     const consortium = d.consorYnStrFr       || (d.consorYn === 'Y' ? 'Oui' : 'Non');
     const intl       = d.internationalBidYnStrFr || (d.internationalBidYn === 'Y' ? 'Oui' : 'Non');
-    const url = `https://www.tuneps.tn/portail/offres/details/${t.epBidMasterId}/${t.bidNo}`;
     const guarantees = d._guarantees || [];
 
     const titleEn      = await translateText(title);
     const authorityEn  = await translateText(authority);
 
-    // Translate standard French procurement terms to English
     const PROC_MAP = {
       'Appel d\'offres ouvert':        'Open Tender',
       'Appel d\'offres restreint':      'Restricted Tender',
@@ -407,36 +459,79 @@ async function displayResults(relevant, details, totalFetched, executionTime) {
     const consEn  = translate(consortium,  CONS_MAP);
     const intlEn  = translate(intl,        INTL_MAP);
 
-    console.log(`${'─'.repeat(40)}`);
-    console.log(`  \x1b[1mTENDER ${String(idx + 1).padStart(2, '0')}  /  Ref:\x1b[0m ${ref}`);
-    console.log(`${'─'.repeat(40)}`);
+    console.log(`${LINE()}`);
+    console.log(`  ${BOLD(`TENDER ${String(idx + 1).padStart(2, '0')}  /  Ref:`)} ${ref}`);
+    console.log(`${LINE()}`);
     console.log();
-    console.log(`  \x1b[1mTitle\x1b[0m              : ${titleEn}`);
-    console.log(`  \x1b[1mAuthority\x1b[0m          : ${authorityEn}`);
-    console.log(`  \x1b[1mPublication Date\x1b[0m   : ${pubDate}`);
-    console.log(`  \x1b[1mSubmission Deadline\x1b[0m: ${deadline}`);
-    console.log(`  \x1b[1mProcedure\x1b[0m          : ${procEn}`);
-    console.log(`  \x1b[1mEvaluation Method\x1b[0m  : ${evalEn}`);
-    console.log(`  \x1b[1mConsortium Allowed\x1b[0m : ${consEn}`);
-    console.log(`  \x1b[1mInternational Bid\x1b[0m  : ${intlEn}`);
+    console.log(`  ${BOLD('Title')}              : ${titleEn}`);
+    console.log(`  ${BOLD('Authority')}          : ${authorityEn}`);
+    console.log(`  ${BOLD('Publication Date')}   : ${pubDate}`);
+    console.log(`  ${BOLD('Submission Deadline')}: ${deadline}`);
+    console.log(`  ${BOLD('Procedure')}          : ${procEn}`);
+    console.log(`  ${BOLD('Evaluation Method')}  : ${evalEn}`);
+    console.log(`  ${BOLD('Consortium Allowed')} : ${consEn}`);
+    console.log(`  ${BOLD('International Bid')} : ${intlEn}`);
 
     if (guarantees.length > 0) {
       console.log();
-      console.log(`  \x1b[1mProvisional Guarantee\x1b[0m:`);
+      console.log(`  ${BOLD('Provisional Guarantee')}:`);
       guarantees.forEach((g, i) => {
-        console.log(`    \x1b[1mLot ${i + 1}\x1b[0m : ${g}`);
+        console.log(`    ${BOLD(`Lot ${i + 1}`)} : ${g}`);
       });
     }
 
     console.log();
-    console.log(`  \x1b[1mURL\x1b[0m : https://www.tuneps.tn/portail/offres/details/${t.epBidMasterId}/${ref}`);
+    console.log(`  ${BOLD('URL')} : https://www.tuneps.tn/portail/offres/details/${t.epBidMasterId}/${ref}`);
 
   }
 
-  console.log(`${'─'.repeat(40)}`);
+  console.log(`${LINE()}`);
   console.log(`  ${relevant.length} tender(s) displayed  |  Execution time: ${executionTime}s`);
-  console.log(`${'─'.repeat(40)}`);
+  console.log(`${LINE()}`);
   console.log();
+}
+
+// STEP 4: DISPLAY RESULTS (JSON)
+function displayResultsJSON(relevant, details, totalFetched, executionTime) {
+  const tenders = relevant.map((t, idx) => {
+    const d   = details[idx] || {};
+    const ref = t.bidNo || '-';
+    const title      = t.bidNmFr || t.bidNmEn || t.bidNmAr || 'N/A';
+    const authority  = t.bidInstNm || d.bidInstNm || 'N/A';
+    const pubDate    = d.publicDt  || t.publicDt  || null;
+    const deadline   = t.bdRecvEndDt || d.bdRecvEndDt || null;
+    const procedure  = d.procedureTypeStrFr  || d.procedureTypeStrEn  || 'N/A';
+    const evaluation = d.evalMethodStrFr     || d.evalMethodStrEn     || 'N/A';
+    const consortium = d.consorYn === 'Y' ? true : false;
+    const intl       = d.internationalBidYn === 'Y' ? true : false;
+    const guarantees = (d._guarantees || []).map((g, i) => ({ lot: i + 1, amount: g }));
+
+    return {
+      ref,
+      authority,
+      title,
+      published: pubDate,
+      deadline,
+      procedure,
+      evaluation,
+      consortium,
+      international: intl,
+      guarantees,
+      url: `https://www.tuneps.tn/portail/offres/details/${t.epBidMasterId}/${ref}`
+    };
+  });
+
+  const result = {
+    date: new Date().toISOString().slice(0,10),
+    period: { from: DATE_FROM, to: DATE_TO },
+    buyer: BUYER_FILTER || null,
+    totalScanned: totalFetched,
+    results: tenders.length,
+    executionTimeSeconds: executionTime,
+    tenders
+  };
+
+  console.log(JSON.stringify(result, null, 2));
 }
 
 // MAIN 
@@ -448,6 +543,19 @@ async function main() {
 
   const start = Date.now();
 
+  // Check cache first
+  const cacheKey = getCacheKey();
+  const cached = cacheGet(cacheKey);
+  if (cached) {
+    // Restore and display cached text directly
+    if (outputFile) {
+      require('fs').writeFileSync(outputFile, cached.text);
+    } else {
+      console.log(cached.text);
+    }
+    return;
+  }
+
   // Step 1 — fetch ALL tenders (no page limit)
   const apiTenders = await fetchTenders();
   const totalFetched = apiTenders.length;
@@ -458,12 +566,12 @@ async function main() {
   if (tenders.length === 0) {
     console.log();
     console.log('TUNEPS TENDER INTELLIGENCE REPORT');
-    console.log(`\x1b[1mPeriod\x1b[0m  : ${DATE_FROM}  to  ${DATE_TO}`);
-    if (BUYER_FILTER)  console.log(`Buyer   : ${BUYER_FILTER}`);
+    console.log(`${BOLD('Period')}  : ${DATE_FROM}  to  ${DATE_TO}`);
+    if (BUYER_FILTER)  console.log(`${BOLD('Buyer')}   : ${BUYER_FILTER}`);
     if (DEADLINE_DAYS) console.log(`Deadline: ${DEADLINE_DAYS > 0 ? `next ${DEADLINE_DAYS} days` : `expired last ${Math.abs(DEADLINE_DAYS)} days`}`);
-    console.log(`Scanned : ${totalFetched} tender(s) fetched from API`);
-    console.log(`Date    : ${new Date().toLocaleDateString('fr-TN')}`);
-    console.log(`Results : 0 relevant tender(s) identified`);
+    console.log(`${BOLD('Scanned')} : ${totalFetched} tender(s) fetched from API`);
+    console.log(`${BOLD('Date')}    : ${new Date().toLocaleDateString('fr-TN')}`);
+    console.log(`${BOLD('Results')} : 0 relevant tender(s) identified`);
     console.log();
     console.log('No tenders matched the specified filters.');
     console.log();
@@ -477,18 +585,18 @@ async function main() {
     const executionTime = ((Date.now() - start) / 1000).toFixed(1);
     console.log();
     console.log('TUNEPS TENDER INTELLIGENCE REPORT');
-    console.log(`\x1b[1mPeriod\x1b[0m  : ${DATE_FROM}  to  ${DATE_TO}`);
-    if (BUYER_FILTER)  console.log(`Buyer   : ${BUYER_FILTER}`);
+    console.log(`${BOLD('Period')}  : ${DATE_FROM}  to  ${DATE_TO}`);
+    if (BUYER_FILTER)  console.log(`${BOLD('Buyer')}   : ${BUYER_FILTER}`);
     if (DEADLINE_DAYS) console.log(`Deadline: ${DEADLINE_DAYS > 0 ? `next ${DEADLINE_DAYS} days` : `expired last ${Math.abs(DEADLINE_DAYS)} days`}`);
-    console.log(`Scanned : ${totalFetched} tender(s) fetched from API`);
-    console.log(`Date    : ${new Date().toLocaleDateString('fr-TN')}`);
-    console.log(`Results : 0 relevant tender(s) identified`);
+    console.log(`${BOLD('Scanned')} : ${totalFetched} tender(s) fetched from API`);
+    console.log(`${BOLD('Date')}    : ${new Date().toLocaleDateString('fr-TN')}`);
+    console.log(`${BOLD('Results')} : 0 relevant tender(s) identified`);
     console.log();
     console.log('No relevant tenders found for the specified period and criteria.');
     console.log();
-    console.log(`${'─'.repeat(40)}`);
+    console.log(`${LINE()}`);
     console.log(`  0 tender(s) displayed  |  Execution time: ${executionTime}s`);
-    console.log(`${'─'.repeat(40)}`);
+    console.log(`${LINE()}`);
     console.log();
     return;
   }
@@ -502,7 +610,16 @@ async function main() {
 
   // Step 4 — display
   const executionTime = ((Date.now() - start) / 1000).toFixed(1);
-  await displayResults(aiRelevant, details, totalFetched, executionTime);
+  await displayResultsText(aiRelevant, details, totalFetched, executionTime);
+
+  // Get the text that was just printed (read from the output file if set, otherwise already in buffer)
+  let text = '';
+  if (outputFile) {
+    text = require('fs').readFileSync(outputFile, 'utf8');
+  }
+
+  // Cache the full output text
+  cacheSet(cacheKey, { cachedAt: new Date().toISOString(), text });
 }
 
 main().catch(e => {
