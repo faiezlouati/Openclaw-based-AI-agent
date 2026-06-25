@@ -1,32 +1,4 @@
-"""
-step3_chunk.py  —  Rule-based document-aware chunker for RFP documents.
 
-5 generic rules work for any CCAP or CCTP document.
-
-Steps
------
-A  Parse cleaned Markdown into typed blocks: heading / table / diagram / text
-B  Group blocks into sections split at ## headings
-C  Apply 5 rules to produce chunks
-D  Assign metadata to each chunk
-
-Rules
------
-1  One section per chunk (baseline)
-2  Diagrams are always isolated in their own chunk
-3  Tables are never split; oversized table-chunks trigger a warning
-4  Chunks under 50 words are merged into the previous chunk (exceptions: diagram
-   chunks, last chunk, and chunks whose predecessor is a diagram)
-5  Sections over 600 words with no tables are split at paragraph boundaries
-   targeting ~400 words; sections over 600 words WITH tables are kept whole
-
-Output
-------
-  output/<base>_chunks.json
-  output/<base>_chunks_report.md   (human-readable evaluation report)
-
-Run after step2_clean.py.
-"""
 
 import json
 import re
