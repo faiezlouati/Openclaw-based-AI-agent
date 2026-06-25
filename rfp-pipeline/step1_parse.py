@@ -1,20 +1,3 @@
-"""
-step1_parse.py
-
-Scans input/ for PDF, DOCX, and DOC files, converts each to clean Markdown.
-Legacy .doc files are auto-converted to .docx via Microsoft Word COM or LibreOffice.
-using Docling (free, local, no API key required), then enriches any
-<!-- image --> placeholders by sending the embedded images to Mistral OCR.
-
-Pass 1 — Docling  : text + tables → Markdown (offline, free)
-Pass 2 — Mistral  : embedded diagram images → Markdown (API, needs MISTRAL_API_KEY)
-
-If MISTRAL_API_KEY is not set, pass 2 is silently skipped and <!-- image -->
-placeholders are kept as-is.
-
-First run: Docling downloads AI models (~1 GB). All subsequent runs are offline.
-Run:  python step1_parse.py
-"""
 
 import base64
 import os
@@ -29,7 +12,7 @@ try:
     from dotenv import load_dotenv
     load_dotenv(Path(os.environ.get("RFP_ENV_FILE", Path.home() / ".tuneps_data" / "rfp-pipeline" / ".env")))
 except ImportError:
-    pass  # python-dotenv optional for pass 1 only
+    pass  
 
 try:
     from docling.document_converter import DocumentConverter, PdfFormatOption
@@ -44,14 +27,14 @@ INPUT_DIR  = Path("input")
 OUTPUT_DIR = Path("output")
 OUTPUT_DIR.mkdir(exist_ok=True)
 
-MIN_IMAGE_PX = 100   # skip images smaller than this in either dimension (icons/logos)
+MIN_IMAGE_PX = 100   
 
 
-# ─── Pass 1: Docling ──────────────────────────────────────────────────────────
+
 
 def build_converter() -> DocumentConverter:
     pipeline_options = PdfPipelineOptions()
-    pipeline_options.do_ocr = False          # text-layer PDF — skip image OCR
+    pipeline_options.do_ocr = False          #
     pipeline_options.do_table_structure = True
 
     return DocumentConverter(
@@ -88,8 +71,7 @@ def looks_like_heading(line: str) -> bool:
         return False
     if 15 < len(s) < 90 and s.isupper() and any(c.isalpha() for c in s):
         return True
-    # Real section numbering: 1) Intro, 1.2. Title, 1. Serveur...
-    # Avoid treating table/spec values like "2 x alimentations" as headings.
+   
     if re.match(r"^\d+(?:\.\d+)*[\).]\s+\D.{2,}$", s):
         return True
     return False
@@ -183,7 +165,7 @@ def parse_document_auto(file_path: Path, converter: Optional[DocumentConverter])
     return parse_document(file_path, converter)
 
 
-# ─── Pass 2: Mistral OCR for embedded images ─────────────────────────────────
+
 
 def extract_pdf_images(pdf_path: Path) -> list[dict]:
     """
@@ -210,7 +192,7 @@ def extract_pdf_images(pdf_path: Path) -> list[dict]:
             raw = doc.extract_image(xref)
             w, h = raw["width"], raw["height"]
             if w < MIN_IMAGE_PX or h < MIN_IMAGE_PX:
-                continue  # skip icons / decorative images
+                continue 
 
             images.append({
                 "bytes": raw["image"],
@@ -275,7 +257,7 @@ def extract_docx_images(docx_path: Path) -> list[dict]:
         for name in media:
             ext = Path(name).suffix.lstrip(".").lower()
             if ext not in SUPPORTED:
-                continue  # skip EMF/WMF vector formats Mistral can't read
+                continue  
             data = z.read(name)
             if pil_available:
                 try:
@@ -287,7 +269,7 @@ def extract_docx_images(docx_path: Path) -> list[dict]:
                     continue
             else:
                 if len(data) < 5000:
-                    continue  # skip tiny blobs without PIL to measure them
+                    continue 
                 w, h = 999, 999
             images.append({"bytes": data,
                             "ext": "jpeg" if ext == "jpg" else ext,
@@ -355,14 +337,14 @@ def enrich_with_mistral_ocr(markdown: str, file_path: Path) -> str:
             print(f"failed ({exc})")
 
         if i < to_process - 1:
-            time.sleep(1)  # avoid rate-limiting
+            time.sleep(1) 
 
     skipped = placeholder_count - to_process
     print(f"  Summary: {ok} OCR'd, {to_process - ok} failed, {skipped} skipped")
     return result
 
 
-# ─── Output ───────────────────────────────────────────────────────────────────
+
 
 def save_result(text: str, source_file: Path) -> Path:
     out_path = OUTPUT_DIR / (source_file.stem + "_parsed.md")
@@ -371,7 +353,6 @@ def save_result(text: str, source_file: Path) -> Path:
     return out_path
 
 
-# ─── .doc → .docx conversion ─────────────────────────────────────────────────
 
 def convert_doc_to_docx(doc_path: Path) -> Optional[Path]:
     """
@@ -382,14 +363,14 @@ def convert_doc_to_docx(doc_path: Path) -> Optional[Path]:
     """
     docx_path = doc_path.with_suffix(".docx")
 
-    # Method 1: Microsoft Word COM automation
+    
     try:
         import win32com.client
         word = win32com.client.Dispatch("Word.Application")
         word.Visible = False
         word.DisplayAlerts = False
         doc = word.Documents.Open(str(doc_path.resolve()))
-        doc.SaveAs2(str(docx_path.resolve()), FileFormat=16)  # 16 = wdFormatDocumentDefault (.docx)
+        doc.SaveAs2(str(docx_path.resolve()), FileFormat=16)  
         doc.Close(False)
         word.Quit()
         print(f"  Converted via Microsoft Word → {docx_path.name}")
@@ -397,7 +378,7 @@ def convert_doc_to_docx(doc_path: Path) -> Optional[Path]:
     except Exception:
         pass
 
-    # Method 2: LibreOffice headless
+    
     for soffice in ("soffice", r"C:\Program Files\LibreOffice\program\soffice.exe"):
         try:
             result = subprocess.run(
@@ -415,7 +396,6 @@ def convert_doc_to_docx(doc_path: Path) -> Optional[Path]:
     return None
 
 
-# ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main():
     doc_files = sorted(INPUT_DIR.glob("*.doc"))
@@ -443,14 +423,12 @@ def main():
     ok, failed = 0, 0
     for file_path in files:
         try:
-            # Pass 1: fast text extraction when possible, Docling fallback when needed
             text = parse_document_auto(file_path, converter)
             if not text.strip():
                 print(_safe(f"WARNING: {file_path.name} produced empty output"))
                 failed += 1
                 continue
 
-            # Pass 2: Mistral OCR for embedded images (PDF and DOCX)
             if file_path.suffix.lower() in (".pdf", ".docx"):
                 text = enrich_with_mistral_ocr(text, file_path)
 
