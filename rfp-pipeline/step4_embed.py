@@ -1,12 +1,4 @@
-"""
-step4_embed.py — Generate embeddings for all chunks and store in ChromaDB.
 
-Reads:  output/*_chunks.json
-Writes: chroma_db/  (persistent ChromaDB, collection: rfp_chunks)
-
-Model: paraphrase-multilingual-mpnet-base-v2 (local, no API key needed)
-Text embedded: section_title + "\n\n" + chunk text
-"""
 
 import hashlib
 import json
@@ -16,7 +8,6 @@ import sys
 import time
 from pathlib import Path
 
-# Windows cp1252 console can't print Arabic — force UTF-8 output
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
@@ -24,7 +15,6 @@ import chromadb
 from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
 
-# ── Paths ──────────────────────────────────────────────────────────────────────
 ROOT       = Path(__file__).parent
 OUTPUT_DIR = Path(os.environ.get("RFP_OUTPUT_DIR", ROOT / "output"))
 CHROMA_DIR = Path(os.environ.get("RFP_CHROMA_DIR", ROOT / "chroma_db"))
@@ -35,7 +25,6 @@ COLLECTION_NAME = "rfp_chunks"
 MODEL_NAME      = "paraphrase-multilingual-mpnet-base-v2"
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
 
 def load_chunks(json_path: Path) -> list[dict]:
     with open(json_path, encoding="utf-8") as f:
@@ -108,7 +97,6 @@ def save_query_embeddings(model: SentenceTransformer) -> None:
         print(f"[WARN] Could not save query embeddings: {exc}")
 
 
-# ── Main ───────────────────────────────────────────────────────────────────────
 
 def main():
     chunk_files = sorted(OUTPUT_DIR.glob("*_chunks.json"))
