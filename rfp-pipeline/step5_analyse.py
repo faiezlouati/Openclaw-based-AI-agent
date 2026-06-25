@@ -1,15 +1,4 @@
-"""
-step5_analyse.py — Query ChromaDB, call Groq LLM, produce analysis JSON + HTML report.
 
-Reads:  chroma_db/              (ChromaDB built by step4)
-        output/*_chunks.json    (to discover tenders)
-        config/company_profile.json
-        config/analysis_prompts.json
-        .env                    (GROQ_API_KEY)
-
-Writes: output/<tender_id>_analysis.json  (single JSON file per tender)
-        output/<tender_id>_report.html  (generated but not required — skipped by default)
-"""
 
 import json
 import os
@@ -26,7 +15,6 @@ from sentence_transformers import SentenceTransformer
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-# ── Paths ──────────────────────────────────────────────────────────────────────
 ROOT        = Path(__file__).parent
 OUTPUT_DIR  = Path(os.environ.get("RFP_OUTPUT_DIR", ROOT / "output"))
 CHROMA_DIR  = Path(os.environ.get("RFP_CHROMA_DIR", ROOT / "chroma_db"))
@@ -38,7 +26,6 @@ GROQ_MODEL      = "llama-3.3-70b-versatile"
 MAX_CHUNKS      = 20
 TOP_K_PER_QUERY = 7
 
-# ── Config loading ─────────────────────────────────────────────────────────────
 
 def load_config() -> tuple[dict, dict]:
     with open(CONFIG_DIR / "company_profile.json", encoding="utf-8") as f:
@@ -48,7 +35,6 @@ def load_config() -> tuple[dict, dict]:
     return profile, prompts
 
 
-# ── Tender grouping ────────────────────────────────────────────────────────────
 
 def discover_tenders() -> dict[str, list[str]]:
     """Return {tender_id: [source_file, ...]} — all documents grouped as one offer."""
@@ -68,7 +54,6 @@ def discover_tenders() -> dict[str, list[str]]:
     return tenders
 
 
-# ── RAG retrieval ──────────────────────────────────────────────────────────────
 
 def load_query_embeddings() -> dict:
     path = OUTPUT_DIR / "_rag_query_embeddings.json"
@@ -136,7 +121,6 @@ def retrieve_chunks(
     return retrieved[:MAX_CHUNKS]
 
 
-# ── Prompt building ────────────────────────────────────────────────────────────
 
 def build_user_prompt(
     profile: dict,
@@ -183,7 +167,6 @@ Extracted content ({len(chunks)} sections):
 {prompts["output_schema_description"]}"""
 
 
-# ── Groq LLM call ─────────────────────────────────────────────────────────────
 
 def call_groq(client: Groq, system: str, user: str) -> str:
     response = client.chat.completions.create(
@@ -200,7 +183,6 @@ def call_groq(client: Groq, system: str, user: str) -> str:
 
 def parse_llm_response(raw: str) -> dict:
     text = raw.strip()
-    # Strip markdown code fences if present
     text = re.sub(r"^```(?:json)?\s*", "", text)
     text = re.sub(r"\s*```$", "", text.strip())
     return json.loads(text.strip())
@@ -268,7 +250,6 @@ def analyse_tender(
     }
 
 
-# ── HTML report ────────────────────────────────────────────────────────────────
 
 _COLOR_BID    = "#2E7D32"
 _COLOR_REVIEW = "#F57C00"
@@ -442,12 +423,11 @@ def generate_html(result: dict, profile: dict) -> str:
 </html>"""
 
 
-# ── Console summary ────────────────────────────────────────────────────────────
 
 ANSI = {
-    "BID":    "\033[92m",  # bright green
-    "REVIEW": "\033[93m",  # bright yellow
-    "SKIP":   "\033[91m",  # bright red
+    "BID":    "\033[92m",  
+    "REVIEW": "\033[93m",  
+    "SKIP":   "\033[91m",  
     "RESET":  "\033[0m",
 }
 
@@ -480,7 +460,6 @@ def print_summary(result: dict):
     print(f"{'='*60}\n")
 
 
-# ── Main ───────────────────────────────────────────────────────────────────────
 
 def main():
     load_dotenv(Path(os.environ.get("RFP_ENV_FILE", Path.home() / ".tuneps_data" / "rfp-pipeline" / ".env")))
