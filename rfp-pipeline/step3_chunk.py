@@ -1,32 +1,3 @@
-"""
-step3_chunk.py  —  Rule-based document-aware chunker for RFP documents.
-
-5 generic rules work for any CCAP or CCTP document.
-
-Steps
------
-A  Parse cleaned Markdown into typed blocks: heading / table / diagram / text
-B  Group blocks into sections split at ## headings
-C  Apply 5 rules to produce chunks
-D  Assign metadata to each chunk
-
-Rules
------
-1  One section per chunk (baseline)
-2  Diagrams are always isolated in their own chunk
-3  Tables are never split; oversized table-chunks trigger a warning
-4  Chunks under 50 words are merged into the previous chunk (exceptions: diagram
-   chunks, last chunk, and chunks whose predecessor is a diagram)
-5  Sections over 600 words with no tables are split at paragraph boundaries
-   targeting ~400 words; sections over 600 words WITH tables are kept whole
-
-Output
-------
-  output/<base>_chunks.json
-  output/<base>_chunks_report.md   (human-readable evaluation report)
-
-Run after step2_clean.py.
-"""
 
 import json
 import re
@@ -41,37 +12,37 @@ except ImportError:
 
 OUTPUT_DIR = Path("output")
 
-# ─── Rule thresholds ──────────────────────────────────────────────────────────
-MIN_WORDS      = 50    # Rule 4
-LARGE_SECTION  = 600   # Rule 5 trigger
-OVERSIZED_WARN = 800   # Rule 3 warning level
-SPLIT_TARGET   = 400   # Rule 5 target sub-chunk size
 
-# ─── Block type labels ────────────────────────────────────────────────────────
+MIN_WORDS      = 50
+LARGE_SECTION  = 600
+OVERSIZED_WARN = 800
+SPLIT_TARGET   = 400
+
+
 T_HEADING = "heading"
 T_TABLE   = "table"
 T_DIAGRAM = "diagram"
 T_TEXT    = "text"
 
 
-# ─── Utilities ────────────────────────────────────────────────────────────────
 
+# Sanitizes console text.
 def _safe(s: str) -> str:
     return s.encode(sys.stdout.encoding, errors="replace").decode(sys.stdout.encoding)
 
-
+# Handles words.
 def _words(text: str) -> int:
     return len(re.sub(r"[|#*`_>\[\]()\-]", " ", text).split())
 
-
+# Handles blocks text.
 def _blocks_text(blocks: list) -> str:
     return "\n\n".join(b["content"] for b in blocks if b["content"].strip())
 
-
+# Handles blocks words.
 def _blocks_words(blocks: list) -> int:
     return _words(_blocks_text(blocks))
 
-
+# Handles unique types.
 def _unique_types(blocks: list) -> list:
     seen, out = set(), []
     for b in blocks:
@@ -81,15 +52,9 @@ def _unique_types(blocks: list) -> list:
     return out
 
 
-# ─── Step A: Parse typed blocks ───────────────────────────────────────────────
 
+# Parses blocks.
 def parse_blocks(text: str) -> list:
-    """
-    Return a flat list of typed block dicts from cleaned Markdown.
-    Blank lines are structural separators, not blocks.
-    DIAGRAM blocks are consumed atomically — any ## headings inside them are
-    NOT treated as section boundaries.
-    """
     blocks = []
     lines  = text.splitlines()
     i = 0
@@ -97,12 +62,12 @@ def parse_blocks(text: str) -> list:
     while i < len(lines):
         line = lines[i]
 
-        # ── blank: skip
+
         if not line.strip():
             i += 1
             continue
 
-        # ── DIAGRAM: consume until [DIAGRAM END]
+
         if line.strip() == "[DIAGRAM START]":
             body = [line]
             i += 1
@@ -115,7 +80,7 @@ def parse_blocks(text: str) -> list:
             blocks.append({"type": T_DIAGRAM, "content": "\n".join(body)})
             continue
 
-        # ── HEADING: lines starting with one or more #
+
         m = re.match(r"^(#{1,3})\s+(.+)$", line.strip())
         if m:
             blocks.append({
@@ -127,7 +92,7 @@ def parse_blocks(text: str) -> list:
             i += 1
             continue
 
-        # ── TABLE: contiguous | … | lines
+
         if line.strip().startswith("|") and line.strip().endswith("|"):
             rows = []
             while (i < len(lines)
@@ -138,7 +103,7 @@ def parse_blocks(text: str) -> list:
             blocks.append({"type": T_TABLE, "content": "\n".join(rows)})
             continue
 
-        # ── TEXT: collect until blank / DIAGRAM / HEADING / TABLE
+
         txt = []
         while i < len(lines):
             l = lines[i]
@@ -158,14 +123,9 @@ def parse_blocks(text: str) -> list:
     return blocks
 
 
-# ─── Step B: Group blocks into sections ───────────────────────────────────────
 
+# Handles group sections.
 def group_sections(blocks: list) -> list:
-    """
-    Split the flat block list into sections at every ## (level-2) heading.
-    Content before the first ## heading becomes the preamble (title=None).
-    Each section dict: {title, heading_line, blocks}
-    """
     sections = []
     cur = {"title": None, "heading_line": None, "blocks": []}
 
@@ -187,17 +147,13 @@ def group_sections(blocks: list) -> list:
     return [s for s in sections if s["blocks"]]
 
 
-# ─── Step C: Apply the 5 rules ────────────────────────────────────────────────
 
+# Handles section label.
 def _section_label(sec: dict) -> str:
     return sec["heading_line"] if sec["heading_line"] else "preamble"
 
-
+# Handles isolate diagrams.
 def _isolate_diagrams(sec: dict) -> list:
-    """
-    Rule 2: pull every DIAGRAM block out of the section into its own raw chunk.
-    Returns one or more raw-chunk dicts.
-    """
     blocks = sec["blocks"]
     label  = _section_label(sec)
     diag_idx = [i for i, b in enumerate(blocks) if b["type"] == T_DIAGRAM]
@@ -221,13 +177,8 @@ def _isolate_diagrams(sec: dict) -> list:
 
     return result
 
-
+# Splits large.
 def _split_large(rc: dict, stats: dict) -> list:
-    """
-    Rule 5: split text-only chunks over LARGE_SECTION words at paragraph
-    boundaries, targeting SPLIT_TARGET words per sub-chunk.
-    Rule 3 takes priority: if the section has a TABLE, keep it whole.
-    """
     if rc["is_diagram"]:
         return [rc]
 
@@ -246,7 +197,7 @@ def _split_large(rc: dict, stats: dict) -> list:
         stats["rule5_table_kept"] = stats.get("rule5_table_kept", 0) + 1
         return [rc]
 
-    # Split at block boundaries
+
     parts, buf, bw = [], [], 0
     for b in rc["blocks"]:
         bw_b = _words(b["content"])
@@ -266,14 +217,8 @@ def _split_large(rc: dict, stats: dict) -> list:
 
     return parts if parts else [rc]
 
-
+# Handles merge tiny.
 def _merge_tiny(raw: list, stats: dict) -> list:
-    """
-    Rule 4: merge under-MIN_WORDS chunks into the previous chunk, unless:
-      - the current chunk is a diagram (Rule 2 exception)
-      - the previous chunk is a diagram (merging would violate Rule 2)
-      - it is the last chunk (exception per spec)
-    """
     if not raw:
         return raw
 
@@ -291,7 +236,7 @@ def _merge_tiny(raw: list, stats: dict) -> list:
 
         prev = result[-1]
         if prev["is_diagram"]:
-            # Can't merge across diagram boundary (Rule 2)
+
             exceptions += 1
             result.append(rc)
         else:
@@ -301,8 +246,8 @@ def _merge_tiny(raw: list, stats: dict) -> list:
                 "is_diagram":    False,
             }
 
-    # Forward-merge: the first chunk has no predecessor.
-    # If it is still tiny and the second chunk is not a diagram, merge forward.
+
+
     if (len(result) >= 2
             and _blocks_words(result[0]["blocks"]) < MIN_WORDS
             and not result[0]["is_diagram"]
@@ -317,26 +262,25 @@ def _merge_tiny(raw: list, stats: dict) -> list:
     stats["rule4_exceptions"] = exceptions
     return result
 
-
+# Handles apply rules.
 def apply_rules(sections: list) -> tuple:
-    """Apply rules 1-5. Returns (raw_chunks, stats)."""
     stats = {"rule5_splits": 0, "rule5_table_kept": 0, "rule4_exceptions": 0}
 
     after_r2 = []
     for sec in sections:
-        after_r2.extend(_isolate_diagrams(sec))     # Rule 1 + 2
+        after_r2.extend(_isolate_diagrams(sec))
 
     after_r5 = []
     for rc in after_r2:
-        after_r5.extend(_split_large(rc, stats))    # Rule 5 (+ Rule 3 inside)
+        after_r5.extend(_split_large(rc, stats))
 
-    final = _merge_tiny(after_r5, stats)             # Rule 4
+    final = _merge_tiny(after_r5, stats)
 
     return final, stats
 
 
-# ─── Step D: Build output chunk objects ───────────────────────────────────────
 
+# Builds chunks.
 def build_chunks(raw: list, base: str, meta: dict) -> list:
     chunks = []
     for idx, rc in enumerate(raw):
@@ -359,8 +303,8 @@ def build_chunks(raw: list, base: str, meta: dict) -> list:
     return chunks
 
 
-# ─── Validation report (console) ─────────────────────────────────────────────
 
+# Handles print validation.
 def print_validation(chunks: list, stats: dict, filename: str) -> None:
     words  = [c["word_count"] for c in chunks]
     n      = len(chunks)
@@ -410,8 +354,8 @@ def print_validation(chunks: list, stats: dict, filename: str) -> None:
         print(_safe(f"  #{c['chunk_index']:<2}  {title:<39} {c['word_count']:>4}w  {bts}{tag}"))
 
 
-# ─── Evaluation report (Markdown file) ───────────────────────────────────────
 
+# Writes report.
 def write_report(chunks: list, stats: dict, base: str) -> Path:
     words = [c["word_count"] for c in chunks]
     n     = len(chunks)
@@ -431,7 +375,7 @@ def write_report(chunks: list, stats: dict, base: str) -> Path:
     )
     lines.append("")
 
-    # Rule summary
+
     lines.append("## Rule Application Summary")
     lines.append("")
     lines.append(f"- Rule 2 — diagrams isolated: "
@@ -444,7 +388,7 @@ def write_report(chunks: list, stats: dict, base: str) -> Path:
                  f"{stats['rule5_splits']}")
     lines.append("")
 
-    # Summary table
+
     lines.append("## Summary Table")
     lines.append("")
     lines.append("| # | chunk_id | words | chars | diagram | table | section_title |")
@@ -460,7 +404,7 @@ def write_report(chunks: list, stats: dict, base: str) -> Path:
         )
     lines.append("")
 
-    # Full content
+
     lines.append("## Full Chunk Content")
     lines.append("")
     for c in chunks:
@@ -488,8 +432,8 @@ def write_report(chunks: list, stats: dict, base: str) -> Path:
     return report_path
 
 
-# ─── File processing ──────────────────────────────────────────────────────────
 
+# Handles process file.
 def process_file(cleaned_path: Path) -> list:
     print(_safe(f"\nFile : {cleaned_path.name}"))
 
@@ -507,13 +451,13 @@ def process_file(cleaned_path: Path) -> list:
     raw, stats = apply_rules(sections)
     chunks   = build_chunks(raw, base, meta)
 
-    # Save JSON
+
     json_path = OUTPUT_DIR / f"{base}_chunks.json"
     json_path.write_text(
         json.dumps(chunks, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
-    # Save Markdown report
+
     report_path = write_report(chunks, stats, base)
 
     print_validation(chunks, stats, cleaned_path.name)
@@ -523,8 +467,8 @@ def process_file(cleaned_path: Path) -> list:
     return chunks
 
 
-# ─── Entry point ──────────────────────────────────────────────────────────────
 
+# Runs the script.
 def main():
     if not OUTPUT_DIR.exists():
         print(f"ERROR: '{OUTPUT_DIR}' not found. Run step1 and step2 first.")
@@ -554,7 +498,6 @@ def main():
     print(f"\n{'=' * 54}")
     print(f"  Done: {ok} succeeded, {failed} failed")
     print(f"{'=' * 54}")
-
 
 if __name__ == "__main__":
     main()

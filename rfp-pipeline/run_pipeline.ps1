@@ -1,4 +1,3 @@
-# RFP Pipeline — run all steps in sequence
 
 $venvPython = ".\venv\Scripts\python.exe"
 

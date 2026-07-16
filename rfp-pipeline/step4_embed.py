@@ -1,12 +1,3 @@
-"""
-step4_embed.py — Generate embeddings for all chunks and store in ChromaDB.
-
-Reads:  output/*_chunks.json
-Writes: chroma_db/  (persistent ChromaDB, collection: rfp_chunks)
-
-Model: paraphrase-multilingual-mpnet-base-v2 (local, no API key needed)
-Text embedded: section_title + "\n\n" + chunk text
-"""
 
 import hashlib
 import json
@@ -16,7 +7,7 @@ import sys
 import time
 from pathlib import Path
 
-# Windows cp1252 console can't print Arabic — force UTF-8 output
+
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
@@ -24,7 +15,7 @@ import chromadb
 from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
 
-# ── Paths ──────────────────────────────────────────────────────────────────────
+
 ROOT       = Path(__file__).parent
 OUTPUT_DIR = Path(os.environ.get("RFP_OUTPUT_DIR", ROOT / "output"))
 CHROMA_DIR = Path(os.environ.get("RFP_CHROMA_DIR", ROOT / "chroma_db"))
@@ -35,14 +26,14 @@ COLLECTION_NAME = "rfp_chunks"
 MODEL_NAME      = "paraphrase-multilingual-mpnet-base-v2"
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
 
+# Loads chunks.
 def load_chunks(json_path: Path) -> list[dict]:
     with open(json_path, encoding="utf-8") as f:
         data = json.load(f)
     return data if isinstance(data, list) else data.get("chunks", [])
 
-
+# Embeds text.
 def embed_text(chunk: dict) -> str:
     title = chunk.get("section_title") or ""
     text  = chunk.get("text") or ""
@@ -50,9 +41,8 @@ def embed_text(chunk: dict) -> str:
         return f"{title}\n\n{text}"
     return text
 
-
+# Chunks to metadata.
 def chunk_to_metadata(chunk: dict) -> dict:
-    """Extract scalar fields only — ChromaDB metadata values must be str/int/float/bool."""
     return {
         "chunk_index":      int(chunk.get("chunk_index", 0)),
         "source_file":      str(chunk.get("source_file", "")),
@@ -64,7 +54,7 @@ def chunk_to_metadata(chunk: dict) -> dict:
         "word_count":       int(chunk.get("word_count", 0)),
     }
 
-
+# Handles query embedding cache path.
 def query_embedding_cache_path() -> Path:
     profile_path = CONFIG_DIR / "company_profile.json"
     if not profile_path.exists():
@@ -73,7 +63,7 @@ def query_embedding_cache_path() -> Path:
     safe_model = MODEL_NAME.replace("/", "_")
     return CACHE_DIR / "query_embeddings" / safe_model / f"{digest}.json"
 
-
+# Handles restore query embeddings.
 def restore_query_embeddings() -> bool:
     src = query_embedding_cache_path()
     if not src.exists():
@@ -83,9 +73,8 @@ def restore_query_embeddings() -> bool:
     print(f"Restored cached query embeddings: {dst.name}")
     return True
 
-
+# Saves query embeddings.
 def save_query_embeddings(model: SentenceTransformer) -> None:
-    """Precompute RAG query embeddings so step5 can avoid loading the model again."""
     profile_path = CONFIG_DIR / "company_profile.json"
     if not profile_path.exists():
         return
@@ -108,8 +97,8 @@ def save_query_embeddings(model: SentenceTransformer) -> None:
         print(f"[WARN] Could not save query embeddings: {exc}")
 
 
-# ── Main ───────────────────────────────────────────────────────────────────────
 
+# Runs the script.
 def main():
     chunk_files = sorted(OUTPUT_DIR.glob("*_chunks.json"))
     if not chunk_files:
@@ -191,7 +180,6 @@ def main():
     print(f"Done.  Added: {total_added}  |  Already existed: {total_skipped}")
     print(f"Collection total: {collection.count()} vectors")
     print(f"ChromaDB path: {CHROMA_DIR.resolve()}")
-
 
 if __name__ == "__main__":
     main()

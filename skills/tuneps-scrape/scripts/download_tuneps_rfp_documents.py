@@ -1,17 +1,4 @@
 #!/usr/bin/env python3
-"""Download Tuneps RFP documents for explicitly requested tender IDs.
-
-Usage:
-  python3 scripts/download_tuneps_rfp_documents.py 20260600248
-  python3 scripts/download_tuneps_rfp_documents.py 20260600248 20260600262
-
-Prerequisite:
-  Run scripts/capture_tuneps_credentials.py after logging in to Tuneps in Chrome.
-
-Safety rule:
-  This script has no default tender list. It downloads only the tender IDs provided
-  by the user/requester.
-"""
 
 from __future__ import annotations
 
@@ -37,9 +24,8 @@ DOCUMENTS_DIR = Path(os.environ.get("TUNEPS_DOCUMENTS_DIR", DATA_ROOT / "documen
 BASE = "https://www.tuneps.tn/api2"
 BID_NO_RE = re.compile(r"^[0-9A-Za-z_-]{6,40}$")
 
-
+# Loads credentials.
 def load_credentials() -> dict[str, str]:
-    """Load credentials and fail early if they are missing/expired."""
     if not CREDENTIALS_FILE.exists():
         print(f"Credentials file not found: {CREDENTIALS_FILE}")
         print("Run capture_tuneps_credentials.py first after logging in to Tuneps.")
@@ -61,9 +47,8 @@ def load_credentials() -> dict[str, str]:
     print(f"Credentials loaded. Valid until {creds['expires']}")
     return creds
 
-
+# Gets headers.
 def get_headers(creds: dict[str, str]) -> dict[str, str]:
-    """Build Tuneps request headers using stored credentials."""
     return {
         "Authorization": f"Bearer {creds['jwt']}",
         "Cookie": f"cookiesession1={creds['cookie']}",
@@ -71,9 +56,8 @@ def get_headers(creds: dict[str, str]) -> dict[str, str]:
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
     }
 
-
+# Gets file list.
 def get_file_list(bid_no: str, headers: dict[str, str]) -> list[dict]:
-    """Fetch the list of documents attached to a given tender number."""
     response = requests.get(
         f"{BASE}/ged//vAttachFile/getByBidNo",
         params={"bidNo": bid_no},
@@ -92,15 +76,13 @@ def get_file_list(bid_no: str, headers: dict[str, str]) -> list[dict]:
     payload = data.get("payload", [])
     return payload if isinstance(payload, list) else []
 
-
+# Sanitizes filename.
 def safe_filename(name: str) -> str:
-    """Avoid path traversal while preserving normal file names."""
     cleaned = os.path.basename(name).strip()
     return cleaned or "document.bin"
 
-
+# Downloads file.
 def download_file(file_info: dict, tender_dir: Path, headers: dict[str, str]) -> Path | None:
-    """Download a single Tuneps attachment."""
     filename = safe_filename(str(file_info.get("fileNm", "document.bin")))
     noderef = file_info.get("bidAttNodeRef")
     if not noderef:
@@ -124,9 +106,8 @@ def download_file(file_info: dict, tender_dir: Path, headers: dict[str, str]) ->
     print(f"  Failed to download {filename} - status {response.status_code}")
     return None
 
-
+# Downloads tender documents.
 def download_tender_documents(bid_no: str, creds: dict[str, str]) -> None:
-    """Download all documents for a given tender number."""
     if not BID_NO_RE.match(bid_no):
         print(f"Invalid tender ID skipped: {bid_no}")
         return
@@ -148,7 +129,7 @@ def download_tender_documents(bid_no: str, creds: dict[str, str]) -> None:
 
     print(f"Done - files saved to {tender_dir}")
 
-
+# Runs the script.
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Download Tuneps RFP documents for explicit tender IDs only."
@@ -168,7 +149,6 @@ def main() -> int:
     print("All requested downloads completed.")
     print(f"Files saved to: {DOCUMENTS_DIR}")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

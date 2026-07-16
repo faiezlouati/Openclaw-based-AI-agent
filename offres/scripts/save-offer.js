@@ -33,6 +33,7 @@ const docDir = path.join(DOCUMENTS_DIR, tenderRef);
 const anaDir = path.join(ANALYSES_DIR, tenderRef);
 [docDir, anaDir, path.dirname(DB_PATH)].forEach(d => fs.mkdirSync(d, { recursive: true }));
 
+// Extracts PDF text.
 function extractPdfText(pdfPath, txtPath) {
   const py = `
 import sys, fitz
@@ -48,6 +49,7 @@ with open(out, 'w', encoding='utf-8') as f:
   if (res.status !== 0) throw new Error((res.stderr || res.stdout || '').trim());
 }
 
+// Copies a tender document.
 function copyDocument(src, docType) {
   const ext = path.extname(src) || '.pdf';
   const dst = path.join(docDir, `${docType}${ext.toLowerCase()}`);
@@ -71,6 +73,7 @@ function copyDocument(src, docType) {
   return dst;
 }
 
+// Runs SQLite commands.
 function sqlite(sql, params = []) {
   if (!fs.existsSync(DB_PATH)) initDb();
   const escapedSql = sql;
@@ -81,11 +84,13 @@ function sqlite(sql, params = []) {
   return res.stdout;
 }
 
+// Runs a SQLite query.
 function q(value) {
   if (value === null || value === undefined) return 'NULL';
   return `'${String(value).replace(/'/g, "''")}'`;
 }
 
+// Initializes the database.
 function initDb() {
   fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
   const schema = `
@@ -150,10 +155,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_tender_doc_type ON documents(ten
   const res = spawnSync('sqlite3', [DB_PATH, schema], { encoding: 'utf8' });
   if (res.status !== 0) throw new Error(`Could not initialize DB: ${res.stderr}`);
 
-  // Older databases were created before updated_at existed.
+
   spawnSync('sqlite3', [DB_PATH, "ALTER TABLE tenders ADD COLUMN updated_at TEXT DEFAULT CURRENT_TIMESTAMP;"], { encoding: 'utf8' });
 }
 
+// Upserts tender metadata.
 function upsertTender() {
   const buyer = opts.buyer || '';
   const obj = opts.object || '';
@@ -165,6 +171,7 @@ function upsertTender() {
             updated_at=CURRENT_TIMESTAMP;`);
 }
 
+// Upserts document metadata.
 function upsertDocument(docType, filePath) {
   sqlite(`INSERT INTO documents(tender_ref, doc_type, file_path, status)
           VALUES (${q(tenderRef)}, ${q(docType)}, ${q(filePath)}, 'uploaded')
@@ -173,6 +180,7 @@ function upsertDocument(docType, filePath) {
             status='uploaded';`);
 }
 
+// Fills the analysis template.
 function fillTemplate(templatePath, destPath, vars) {
   if (!fs.existsSync(templatePath)) return;
   let content = fs.readFileSync(templatePath, 'utf8');

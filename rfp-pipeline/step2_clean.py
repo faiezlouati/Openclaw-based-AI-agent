@@ -1,24 +1,3 @@
-"""
-step2_clean.py
-
-7-stage cleaning pipeline for RFP Markdown documents produced by step1_parse.py.
-Generic -- works on any French, Arabic, or mixed-language procurement document.
-
-Stages (applied in order):
-  1. Fix encoding (ftfy + Unicode normalisation)
-  2. Detect word concatenation (warn only)
-  3. Merge split document titles
-  4. Merge tables split at page breaks
-  5. Clean diagram blocks
-  6. Normalise whitespace and structure
-  7. Remove page headers / footers
-
-Outputs per file:
-  output/<base>_cleaned.md
-  output/<base>_metadata.json
-
-Run after step1_parse.py.
-"""
 
 import json
 import re
@@ -36,13 +15,13 @@ except ImportError:
 OUTPUT_DIR = Path("output")
 
 
-# ─── Table helpers ─────────────────────────────────────────────────────────────
 
+# Checks table line.
 def is_table_line(line: str) -> bool:
     s = line.strip()
     return s.startswith("|") and s.endswith("|") and s.count("|") >= 2
 
-
+# Checks separator row.
 def is_separator_row(line: str) -> bool:
     s = line.strip()
     if not (s.startswith("|") and s.endswith("|")):
@@ -50,36 +29,31 @@ def is_separator_row(line: str) -> bool:
     cells = [c.strip() for c in s.split("|") if c.strip()]
     return bool(cells) and all(re.match(r"^:?-+:?$", c) for c in cells)
 
-
+# Handles count table columns.
 def count_table_columns(block: list) -> int:
-    # Use the separator row first (always clean — no content to confuse)
+
     for line in block:
         if is_separator_row(line):
             return line.strip().count("|") - 1
-    # Fall back: total pipe count on first row
+
     for line in block:
         s = line.strip()
         if s.startswith("|") and s.endswith("|"):
             return s.count("|") - 1
     return 0
 
-
+# Handles col1.
 def _col1(row: str) -> str:
     cells = [c.strip() for c in row.split("|") if c.strip()]
     return cells[0].lower() if cells else ""
 
-
+# Gets data rows.
 def get_data_rows(block: list) -> list:
     sep = next((i for i, l in enumerate(block) if is_separator_row(l)), -1)
     return block[sep + 1:] if sep != -1 else block
 
-
+# Gets merge rows.
 def get_merge_rows(table1: list, table2: list) -> list:
-    """
-    Rows from table2 to append to table1 when merging.
-    - Duplicate header + separator  -> skip both, keep only data rows.
-    - Continuation data + separator -> keep data row, drop separator only.
-    """
     t1_col1 = ""
     for line in table1:
         if not is_separator_row(line):
@@ -99,7 +73,7 @@ def get_merge_rows(table1: list, table2: list) -> list:
     else:
         return table2[:sep_idx] + table2[sep_idx + 1:]
 
-
+# Parses segments.
 def _parse_segments(lines: list) -> list:
     segments = []
     i = 0
@@ -119,28 +93,28 @@ def _parse_segments(lines: list) -> list:
     return segments
 
 
-# ─── Stage 1: Fix encoding ─────────────────────────────────────────────────────
 
+# Handles stage1 fix encoding.
 def stage1_fix_encoding(text: str) -> str:
     text = ftfy.fix_text(text)
     text = unicodedata.normalize("NFC", text)
     replacements = [
-        ("­", ""),   # soft hyphen
-        (" ", " "),  # non-breaking space
-        ("​", ""),   # zero-width space
-        ("‌", ""),   # zero-width non-joiner
-        ("‍", ""),   # zero-width joiner
-        ("﻿", ""),   # BOM
-        ("\u200E", ""),   # LRM
-        ("\u200F", ""),   # RLM
+        ("­", ""),
+        (" ", " "),
+        ("​", ""),
+        ("‌", ""),
+        ("‍", ""),
+        ("﻿", ""),
+        ("\u200E", ""),
+        ("\u200F", ""),
     ]
     for bad, good in replacements:
         text = text.replace(bad, good)
     return text
 
 
-# ─── Stage 2: Detect word concatenation ───────────────────────────────────────
 
+# Handles stage2 detect concatenation.
 def stage2_detect_concatenation(lines: list) -> list:
     warnings = []
     seen = set()
@@ -165,7 +139,7 @@ def stage2_detect_concatenation(lines: list) -> list:
             if key in seen:
                 continue
 
-            # Pattern A: 3+ lowercase letters followed by uppercase mid-word
+
             if re.search(r"[a-zà-ɏ]{3}[A-ZÀ-Þ]", token):
                 seen.add(key)
                 warnings.append(
@@ -173,7 +147,7 @@ def stage2_detect_concatenation(lines: list) -> list:
                 )
                 continue
 
-            # Pattern B: very long token (>= 25 chars) with substantial lowercase content
+
             if len(token) >= 25:
                 lower_count = sum(1 for c in token if c.islower())
                 if lower_count >= 5:
@@ -185,23 +159,26 @@ def stage2_detect_concatenation(lines: list) -> list:
     return warnings
 
 
-# ─── Stage 3: Merge split document titles ──────────────────────────────────────
 
+# Handles stage3 merge split titles.
 def stage3_merge_split_titles(lines: list) -> tuple:
     changes = []
     SCAN = min(20, len(lines))
     result = list(lines)
 
+    # Parses heading.
     def parse_heading(line):
         m = re.match(r"^(#{1,3}) (.+)$", line.strip())
         return (m.group(1), m.group(2).strip()) if m else None
 
+    # Checks continuation.
     def is_continuation(title):
         if len(title.split()) >= 8:
             return False
-        # Exclude numbered sections and French/Arabic article keywords
+
         return not re.match(r"^\d+[.)]\s|^Article\s|^الفصل\s|^المادة\s|^الباب\s|^:", title)
 
+    # Handles next heading idx.
     def next_heading_idx(res, after, limit):
         j = after
         while j < limit and j < len(res) and res[j].strip() == "":
@@ -227,7 +204,7 @@ def stage3_merge_split_titles(lines: list) -> tuple:
 
         merged = f"{level} {title} {h2[1]}"
 
-        # Check for 3-part title
+
         k = next_heading_idx(result, j + 1, SCAN)
         if k != -1:
             h3 = parse_heading(result[k])
@@ -254,11 +231,11 @@ def stage3_merge_split_titles(lines: list) -> tuple:
     return result, changes
 
 
-# ─── Stage 4: Merge tables split at page breaks ────────────────────────────────
 
+# Handles stage4 merge split tables.
 def stage4_merge_split_tables(lines: list) -> tuple:
     changes = []
-    warned_pairs: set = set()   # track (t1.lineno, t2.lineno) to avoid duplicate warnings
+    warned_pairs: set = set()
     segments = _parse_segments(lines)
 
     changed = True
@@ -276,8 +253,9 @@ def stage4_merge_split_tables(lines: list) -> tuple:
                 t1, gap, t2 = segments[j], segments[j + 1], segments[j + 2]
                 blank_count = sum(1 for l in gap["lines"] if not l.strip())
 
-                # A gap is "clean" if it contains only blank lines and isolated
-                # page-number artefacts (single digits, "Page X de Y", etc.)
+
+
+                # Checks page artefact.
                 def is_page_artefact(s: str) -> bool:
                     s = s.strip()
                     return (
@@ -327,9 +305,10 @@ def stage4_merge_split_tables(lines: list) -> tuple:
     return result, changes
 
 
-# ─── Stage 5: Clean diagram blocks ────────────────────────────────────────────
 
+# Handles stage5 clean diagrams.
 def stage5_clean_diagrams(text: str) -> str:
+    # Normalizes diagram.
     def normalize_diagram(m):
         inner = re.sub(r"\n{3,}", "\n\n", m.group(1)).strip()
         return f"[DIAGRAM START]\n{inner}\n[DIAGRAM END]"
@@ -344,9 +323,10 @@ def stage5_clean_diagrams(text: str) -> str:
     return text
 
 
-# ─── Stage 6: Normalise whitespace and structure ───────────────────────────────
 
+# Handles stage6 normalize whitespace.
 def stage6_normalize_whitespace(lines: list) -> list:
+    # Normalizes bullets.
     def normalize_bullets(line):
         if is_table_line(line) or line.strip().startswith("#"):
             return line.rstrip()
@@ -354,7 +334,7 @@ def stage6_normalize_whitespace(lines: list) -> list:
 
     lines = [normalize_bullets(l) for l in lines]
 
-    # Collapse 3+ blank lines to 2
+
     result = []
     blank_run = 0
     for line in lines:
@@ -366,7 +346,7 @@ def stage6_normalize_whitespace(lines: list) -> list:
             blank_run = 0
             result.append(line)
 
-    # Reduce 2+ blank lines before a heading to 1
+
     result2 = []
     for line in result:
         if line.strip().startswith("#"):
@@ -374,7 +354,7 @@ def stage6_normalize_whitespace(lines: list) -> list:
                 result2.pop()
         result2.append(line)
 
-    # Reduce 2+ blank lines after a heading to 1
+
     result3 = []
     i = 0
     while i < len(result2):
@@ -383,8 +363,8 @@ def stage6_normalize_whitespace(lines: list) -> list:
             j = i + 1
             while j < len(result2) and result2[j].strip() == "":
                 j += 1
-            if j > i + 2:           # more than one blank after heading
-                result3.append("")  # keep exactly one blank
+            if j > i + 2:
+                result3.append("")
                 i = j
                 continue
         i += 1
@@ -392,15 +372,9 @@ def stage6_normalize_whitespace(lines: list) -> list:
     return result3
 
 
-# ─── Post-stage blank recompression ──────────────────────────────────────────
 
+# Handles recompress blanks.
 def _recompress_blanks(lines: list) -> list:
-    """Collapse blank sequences that stage7 line-removal may have created.
-
-    Stage6 normalises blanks, then stage7 removes page numbers/headers.
-    Removing a line between two blank lines creates an accidental double-blank.
-    This pass restores the invariants: max 2 blanks anywhere, max 1 before a heading.
-    """
     out, run = [], 0
     for line in lines:
         if line.strip() == "":
@@ -420,8 +394,8 @@ def _recompress_blanks(lines: list) -> list:
     return result
 
 
-# ─── Stage 7: Remove page headers / footers ───────────────────────────────────
 
+# Handles stage7 remove headers footers.
 def stage7_remove_headers_footers(lines: list) -> list:
     counts = Counter()
     for line in lines:
@@ -450,26 +424,26 @@ def stage7_remove_headers_footers(lines: list) -> list:
             continue
         if re.match(r"(?i)^page\s+\d+\s*(de|of|/)\s*\d+$", s):
             continue
-        # Arabic page indicator: صفحة X من Y
+
         if re.match(r"^صفحة\s+\d+\s*(من|/)\s*\d+$", s):
             continue
         result.append(line)
     return result
 
 
-# ─── Metadata extraction ──────────────────────────────────────────────────────
 
+# Detects document type.
 def detect_document_type(text: str) -> str:
     for region in (text[:2000], text):
         upper = region.upper()
-        # French keywords
+
         if "CLAUSES ADMINISTRATIVES" in upper or "CCAP" in upper:
             return "CCAP"
         if "CLAUSES TECHNIQUES" in upper or "CCTP" in upper:
             return "CCTP"
         if "CAHIER DES CHARGES" in upper:
             return "CDC"
-        # Arabic keywords — match core phrase; كراس may render as كر ّ اس
+
         if "الشروط الإدارية" in region:
             return "CCAP"
         if "الشروط التقنية" in region or "الشروط الفنية" in region:
@@ -478,7 +452,7 @@ def detect_document_type(text: str) -> str:
             return "CDC"
     return "UNKNOWN"
 
-
+# Detects language.
 def detect_language(text: str) -> str:
     arabic = len(re.findall(r"[؀-ۿ]", text))
     latin  = len(re.findall(r"[a-zA-ZÀ-ɏ]", text))
@@ -492,7 +466,7 @@ def detect_language(text: str) -> str:
         return "mixed"
     return "fr"
 
-
+# Extracts metadata.
 def extract_metadata(cleaned: str, source_file: str, warnings: list) -> dict:
     lines = cleaned.splitlines()
 
@@ -522,14 +496,13 @@ def extract_metadata(cleaned: str, source_file: str, warnings: list) -> dict:
     }
 
 
-# ─── Visualisation helpers ────────────────────────────────────────────────────
 
+# Sanitizes console text.
 def _safe(s: str) -> str:
     return s.encode(sys.stdout.encoding, errors="replace").decode(sys.stdout.encoding)
 
-
+# Handles show merge join.
 def _show_merge_join(cleaned: str, table_changes: list) -> None:
-    """Print rows around the midpoint of the first successfully merged table."""
     first = next((c for c in table_changes if c.startswith("Merged table")), None)
     if not first:
         return
@@ -539,7 +512,7 @@ def _show_merge_join(cleaned: str, table_changes: list) -> None:
         return
     target = int(m.group(1))
 
-    # Collect the table block that starts at/near target line
+
     lines = cleaned.splitlines()
     in_t = False
     tbl_rows = []
@@ -568,8 +541,8 @@ def _show_merge_join(cleaned: str, table_changes: list) -> None:
         print(_safe(f"    {row[:120]}"))
 
 
-# ─── File processing ──────────────────────────────────────────────────────────
 
+# Handles process file.
 def process_file(parsed_path: Path) -> dict:
     print(f"\n{'-' * 60}")
     print(_safe(f"File       : {parsed_path.name}"))
@@ -608,7 +581,7 @@ def process_file(parsed_path: Path) -> dict:
         json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
-    # ── Summary line
+
     print(_safe(f"  Type     : {meta['document_type']}"))
     print(_safe(f"  Language : {meta['detected_language']}"))
     print(_safe(f"  Words    : {meta['word_count']:,}"))
@@ -618,22 +591,22 @@ def process_file(parsed_path: Path) -> dict:
     print(_safe(f"  Warnings : {len(all_warnings)} (word concatenation)"))
     print(_safe(f"  Saved to : {cleaned_path.name}"))
 
-    # ── Title merge details
+
     if title_changes:
         print("\n  -- Title merges --")
         for c in title_changes:
             print(_safe(f"    {c}"))
 
-    # ── Table merge details
+
     if table_changes:
         print("\n  -- Table merges --")
         for c in table_changes:
             print(_safe(f"    {c}"))
 
-    # ── Join point visualisation
+
     _show_merge_join(cleaned, table_changes)
 
-    # ── Metadata JSON (without section_titles to keep output concise)
+
     print("\n  -- Metadata JSON --")
     preview = {k: v for k, v in meta.items() if k != "section_titles"}
     print(_safe(json.dumps(preview, ensure_ascii=False, indent=4)))
@@ -641,8 +614,8 @@ def process_file(parsed_path: Path) -> dict:
     return meta
 
 
-# ─── Entry point ──────────────────────────────────────────────────────────────
 
+# Runs the script.
 def main():
     if not OUTPUT_DIR.exists():
         print(f"ERROR: '{OUTPUT_DIR}' not found. Run step1_parse.py first.")
@@ -671,7 +644,6 @@ def main():
     print(f"\n{'=' * 60}")
     print(f"  Done: {ok} succeeded, {failed} failed")
     print(f"{'=' * 60}")
-
 
 if __name__ == "__main__":
     main()

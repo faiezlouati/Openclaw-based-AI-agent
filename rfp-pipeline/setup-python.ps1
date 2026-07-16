@@ -1,12 +1,9 @@
-# Python Setup Script for Windows
-# Save this as setup-python.ps1
 
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "    Python Setup Script" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Check if Python is installed
 Write-Host "Checking for Python installation..." -ForegroundColor Yellow
 
 try {
@@ -32,7 +29,7 @@ if (-not $pythonInstalled) {
     Write-Host "4. IMPORTANT: Check 'Add Python to PATH'" -ForegroundColor Red
     Write-Host "5. Restart your terminal after installation" -ForegroundColor Yellow
     Write-Host ""
-    
+
     $continue = Read-Host "Do you want to continue without Python? (y/n)"
     if ($continue -ne 'y') {
         Write-Host "Exiting. Please install Python first." -ForegroundColor Red
@@ -42,10 +39,9 @@ if (-not $pythonInstalled) {
 else {
     Write-Host ""
     Write-Host "Creating virtual environment..." -ForegroundColor Yellow
-    
-    # Create venv
+
     & python -m venv venv
-    
+
     if (Test-Path "venv") {
         Write-Host "SUCCESS: Virtual environment 'venv' created!" -ForegroundColor Green
         Write-Host ""

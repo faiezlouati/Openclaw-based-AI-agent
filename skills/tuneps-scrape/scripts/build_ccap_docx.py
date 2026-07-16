@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-
 import sys
 from pathlib import Path
 
@@ -11,7 +10,7 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
-# ── Palette ──────────────────────────────────────────────────────────────────
+
 NAVY        = RGBColor(0x1F, 0x38, 0x64)
 ACCENT_BLUE = RGBColor(0x2E, 0x75, 0xB6)
 HIGH_RED    = RGBColor(0xC0, 0x00, 0x00)
@@ -21,10 +20,10 @@ WHITE       = RGBColor(0xFF, 0xFF, 0xFF)
 BLACK       = RGBColor(0x00, 0x00, 0x00)
 BODY_GREY   = RGBColor(0x40, 0x40, 0x40)
 
-# ── Shared table helpers (same as build_cctp_docx.py) ─────────────────────────
 
+
+# Handles shade cell.
 def shade_cell(cell, hex_color):
-    """Apply background shading to a cell."""
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
     for existing in tcPr.findall(qn('w:shd')):
@@ -35,9 +34,8 @@ def shade_cell(cell, hex_color):
     shd.set(qn('w:fill'),  hex_color.upper().replace('#', ''))
     tcPr.append(shd)
 
-
+# Handles add cell borders.
 def add_cell_borders(cell, color='CCCCCC', sz=4):
-    """Apply borders to all four sides of a cell."""
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
     tcBorders = tcPr.find(qn('w:tcBorders'))
@@ -52,14 +50,8 @@ def add_cell_borders(cell, color='CCCCCC', sz=4):
         b.set(qn('w:color'), color)
         tcBorders.append(b)
 
-
+# Handles add table row.
 def add_table_row(table, values, header=False, severity_col=None, alert_col=None):
-    """
-    Add a row to a table.
-    - header=True  : white bg, black bold text, blue borders
-    - severity_col : index of column to color-code (High=red, Medium=orange, Low=green)
-    - alert_col    : index of column whose first char maps to severity emoji → color
-    """
     row = table.add_row()
     for ci, val in enumerate(values):
         cell = row.cells[ci]
@@ -98,9 +90,8 @@ def add_table_row(table, values, header=False, severity_col=None, alert_col=None
             add_cell_borders(cell, color='CCCCCC', sz=4)
     return row
 
-
+# Handles section heading.
 def section_heading(doc, text):
-    """Navy bold section heading with bottom border."""
     para = doc.add_paragraph()
     para.paragraph_format.space_before = Pt(8)
     para.paragraph_format.space_after  = Pt(4)
@@ -119,7 +110,7 @@ def section_heading(doc, text):
     run.font.size = Pt(13)
     return para
 
-
+# Handles body para.
 def body_para(doc, text, size=9):
     para = doc.add_paragraph()
     para.paragraph_format.space_before = Pt(2)
@@ -129,9 +120,8 @@ def body_para(doc, text, size=9):
     run.font.color.rgb = BODY_GREY
     return para
 
-
+# Handles add callout border.
 def add_callout_border(para, color='1F3864', sz=6):
-    """Add border + tint background to a paragraph (callout style)."""
     pPr = para._p.get_or_add_pPr()
     pBdr = OxmlElement('w:pBdr')
     for side in ['top', 'left', 'bottom', 'right']:
@@ -149,8 +139,8 @@ def add_callout_border(para, color='1F3864', sz=6):
     pPr.append(shd)
 
 
-# ── Header band ───────────────────────────────────────────────────────────────
 
+# Handles make header section.
 def make_header_section(doc, title, subtitle=None):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -171,8 +161,8 @@ def make_header_section(doc, title, subtitle=None):
         r2.font.color.rgb = ACCENT_BLUE
 
 
-# ── Main builder ───────────────────────────────────────────────────────────────
 
+# Builds ccap docx.
 def build_ccap_docx(tender_ref, src_md, out_docx):
     doc = Document()
 
@@ -186,7 +176,7 @@ def build_ccap_docx(tender_ref, src_md, out_docx):
         f"CCAP RELEVANCE ANALYSIS — {tender_ref}",
         "Administrative Tender Document | Ministry of National Defence")
 
-    # ── 1. Document Overview ─────────────────────────────────────────────────
+
     section_heading(doc, "1. Document Overview")
 
     t1 = doc.add_table(rows=1, cols=2)
@@ -206,7 +196,7 @@ def build_ccap_docx(tender_ref, src_md, out_docx):
         add_table_row(t1, list(r))
     doc.add_paragraph('')
 
-    # ── 2. Participation Conditions ───────────────────────────────────────────
+
     section_heading(doc, "2. Participation Conditions")
 
     body_para(doc, "Article 2 — Scope", bold=True) if False else None
@@ -251,7 +241,7 @@ def build_ccap_docx(tender_ref, src_md, out_docx):
         run.font.size = Pt(9); run.font.color.rgb = BODY_GREY
     doc.add_paragraph('')
 
-    # ── 3. Bid Components ────────────────────────────────────────────────────
+
     section_heading(doc, "3. Bid Components")
 
     p = doc.add_paragraph()
@@ -297,7 +287,7 @@ def build_ccap_docx(tender_ref, src_md, out_docx):
     add_table_row(t3c, ['Company Registry Extract', 'Within 3 months of issue date'])
     doc.add_paragraph('')
 
-    # ── 4. Financial Guarantee ───────────────────────────────────────────────
+
     section_heading(doc, "4. Financial Guarantee (Article 10)")
 
     t4 = doc.add_table(rows=1, cols=2)
@@ -314,7 +304,7 @@ def build_ccap_docx(tender_ref, src_md, out_docx):
     add_table_row(t4, ['Seizure — No final guarantee', 'Selected bidder fails to provide final performance guarantee'])
     doc.add_paragraph('')
 
-    # ── 5. Submission Rules ─────────────────────────────────────────────────
+
     section_heading(doc, "5. Submission Rules (Article 8)")
 
     p = doc.add_paragraph()
@@ -358,7 +348,7 @@ def build_ccap_docx(tender_ref, src_md, out_docx):
             run.font.size = Pt(9); run.font.color.rgb = BODY_GREY
     doc.add_paragraph('')
 
-    # ── 6. Evaluation ───────────────────────────────────────────────────────
+
     section_heading(doc, "6. Evaluation (Article 13)")
 
     t6 = doc.add_table(rows=1, cols=2)
@@ -369,7 +359,7 @@ def build_ccap_docx(tender_ref, src_md, out_docx):
     add_table_row(t6, ['Stage 3', 'Lowest evaluated compliant bid wins (Moins-disant)'])
     doc.add_paragraph('')
 
-    # ── 7. Key Risks ─────────────────────────────────────────────────────────
+
     section_heading(doc, "7. Key Risks & Observations")
 
     t7 = doc.add_table(rows=1, cols=3)
@@ -389,7 +379,7 @@ def build_ccap_docx(tender_ref, src_md, out_docx):
         add_table_row(t7, list(r), severity_col=2)
     doc.add_paragraph('')
 
-    # ── Callout / Note ────────────────────────────────────────────────────────
+
     callout = doc.add_paragraph()
     callout.paragraph_format.space_before = Pt(4)
     callout.paragraph_format.space_after  = Pt(6)
@@ -400,7 +390,7 @@ def build_ccap_docx(tender_ref, src_md, out_docx):
     run.font.size = Pt(9)
     run.font.color.rgb = BODY_GREY
 
-    # ── Footer ───────────────────────────────────────────────────────────────
+
     p_f = doc.add_paragraph()
     p_f.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run_f = p_f.add_run(f"CCAP Analysis | Tender Ref: {tender_ref} | Generated by Tuneps Analyst")
@@ -410,7 +400,6 @@ def build_ccap_docx(tender_ref, src_md, out_docx):
 
     doc.save(out_docx)
     print(f"CCAP DOCX saved: {out_docx}")
-
 
 if __name__ == '__main__':
     tender_ref = sys.argv[1] if len(sys.argv) > 1 else '20260301601'

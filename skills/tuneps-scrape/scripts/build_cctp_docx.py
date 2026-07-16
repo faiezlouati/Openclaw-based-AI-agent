@@ -1,27 +1,26 @@
 #!/usr/bin/env python3
 
-
 from docx import Document
 from docx.shared import Pt, RGBColor, Cm
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
-# ── Palette ──────────────────────────────────────────────
-NAVY        = RGBColor(0x1F, 0x38, 0x64)   # #1F3864 – titles, headings, table headers
-ACCENT_BLUE = RGBColor(0x2E, 0x75, 0xB6)   # #2E75B6 – subtitle accent
-HIGH_RED    = RGBColor(0xC0, 0x00, 0x00)   # Risk: High
-MED_ORANGE  = RGBColor(0xFF, 0x66, 0x00)   # Risk: Medium
-LOW_GREEN   = RGBColor(0x37, 0x56, 0x23)   # Risk: Low
+
+NAVY        = RGBColor(0x1F, 0x38, 0x64)
+ACCENT_BLUE = RGBColor(0x2E, 0x75, 0xB6)
+HIGH_RED    = RGBColor(0xC0, 0x00, 0x00)
+MED_ORANGE  = RGBColor(0xFF, 0x66, 0x00)
+LOW_GREEN   = RGBColor(0x37, 0x56, 0x23)
 WHITE       = RGBColor(0xFF, 0xFF, 0xFF)
 BLACK       = RGBColor(0x00, 0x00, 0x00)
-BODY_GREY   = RGBColor(0x40, 0x40, 0x40)   # softened body text
-LIGHT_BG    = 'EEF3FA'   # light navy tint for callout box
+BODY_GREY   = RGBColor(0x40, 0x40, 0x40)
+LIGHT_BG    = 'EEF3FA'
 
-# ── Helpers ────────────────────────────────────────────────
 
+
+# Handles shade cell.
 def shade_cell(cell, hex_color):
-    """Apply background shading to a cell."""
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
     for existing in tcPr.findall(qn('w:shd')):
@@ -32,9 +31,8 @@ def shade_cell(cell, hex_color):
     shd.set(qn('w:fill'),  hex_color.upper().replace('#', ''))
     tcPr.append(shd)
 
-
+# Handles set cell border.
 def set_cell_border(cell, **kwargs):
-    """Apply borders to a cell. kwargs: top, bottom, left, right -> (color, sz)"""
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
     tcBorders = OxmlElement('w:tcBorders')
@@ -49,7 +47,7 @@ def set_cell_border(cell, **kwargs):
             tcBorders.append(b)
     tcPr.append(tcBorders)
 
-
+# Handles add cell borders.
 def add_cell_borders(cell, color='AAAAAA', sz=4):
     for side in ['top', 'left', 'bottom', 'right']:
         b = OxmlElement(f'w:{side}')
@@ -65,9 +63,8 @@ def add_cell_borders(cell, color='AAAAAA', sz=4):
             tcPr.append(tcBorders)
         tcBorders.append(b)
 
-
+# Handles add table row.
 def add_table_row(table, values, header=False, risk_col=None):
-    """Add a row to a table. risk_col = index of severity cell (0-based)."""
     row = table.add_row()
     for ci, val in enumerate(values):
         cell = row.cells[ci]
@@ -84,7 +81,7 @@ def add_table_row(table, values, header=False, risk_col=None):
 
         if header:
             run.bold = True
-            run.font.color.rgb = BLACK  # white background, black text
+            run.font.color.rgb = BLACK
             shade_cell(cell, 'FFFFFF')
             add_cell_borders(cell, color='2E75B6', sz=6)
         elif is_severity:
@@ -104,9 +101,8 @@ def add_table_row(table, values, header=False, risk_col=None):
             add_cell_borders(cell, color='CCCCCC', sz=4)
     return row
 
-
+# Handles add paragraph border.
 def add_paragraph_border(para, color='1F3864', sz=6):
-    """Add a paragraph border + light tint background (callout style)."""
     pPr = para._p.get_or_add_pPr()
     pBdr = OxmlElement('w:pBdr')
     for side in ['top', 'left', 'bottom', 'right']:
@@ -124,7 +120,6 @@ def add_paragraph_border(para, color='1F3864', sz=6):
     pPr.append(shd)
 
 
-# ── Document setup ────────────────────────────────────────
 
 doc = Document()
 
@@ -134,7 +129,7 @@ for section in doc.sections:
     section.left_margin   = Cm(1.8)
     section.right_margin  = Cm(1.8)
 
-# ── TITLE BLOCK ───────────────────────────────────────────
+
 
 title_para = doc.add_paragraph()
 title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -153,14 +148,14 @@ run = sub_para.add_run('Datacenter Modernization — Mutuelle de l\'Armée Natio
 run.font.color.rgb = ACCENT_BLUE
 run.font.size = Pt(11)
 
-# ── SECTION HEADING ───────────────────────────────────────
 
+
+# Handles section heading.
 def section_heading(doc, text):
-    """Navy bold section heading with bottom border."""
     para = doc.add_paragraph()
     para.paragraph_format.space_before = Pt(8)
     para.paragraph_format.space_after  = Pt(4)
-    # bottom border
+
     pPr = para._p.get_or_add_pPr()
     pBdr = OxmlElement('w:pBdr')
     bottom = OxmlElement('w:bottom')
@@ -176,7 +171,7 @@ def section_heading(doc, text):
     run.font.size = Pt(13)
     return para
 
-
+# Handles body para.
 def body_para(doc, text, size=10):
     para = doc.add_paragraph()
     para.paragraph_format.space_before = Pt(2)
@@ -186,7 +181,7 @@ def body_para(doc, text, size=10):
     run.font.color.rgb = BODY_GREY
     return para
 
-
+# Handles bullet para.
 def bullet_para(doc, text, size=10):
     para = doc.add_paragraph(style='List Paragraph')
     para.paragraph_format.space_before = Pt(1)
@@ -197,9 +192,8 @@ def bullet_para(doc, text, size=10):
     return para
 
 
-# ─────────────────────────────────────────────────────────
-# 1. EXTRACTION AND MAPPING
-# ─────────────────────────────────────────────────────────
+
+
 section_heading(doc, '1. Extraction and Mapping')
 
 body_para(doc,
@@ -216,7 +210,7 @@ body_para(doc,
     'support. The execution period is 120 days from contract approval. The existing VMware vSphere 8 '
     'platform must be migrated to the new solution as part of the project scope.')
 
-# Items table
+
 items_table = doc.add_table(rows=0, cols=4)
 items_table.style = 'Table Grid'
 add_table_row(items_table, ['#', 'Item', 'Qty', 'Category'], header=True)
@@ -235,7 +229,7 @@ for row in items_data:
 
 doc.add_paragraph('')
 
-# Included services
+
 intro2 = doc.add_paragraph()
 intro2.paragraph_format.space_before = Pt(2)
 intro2.paragraph_format.space_after  = Pt(2)
@@ -269,9 +263,9 @@ for s in services:
 
 doc.add_paragraph('')
 
-# ─────────────────────────────────────────────────────────
-# 2. QUALIFICATION REQUIREMENTS
-# ─────────────────────────────────────────────────────────
+
+
+
 section_heading(doc, '2. Qualification Requirements')
 
 body_para(doc,
@@ -305,9 +299,9 @@ for cat, req in qual_data:
 
 doc.add_paragraph('')
 
-# ─────────────────────────────────────────────────────────
-# 3. TECHNICAL DEMAND SUMMARY
-# ─────────────────────────────────────────────────────────
+
+
+
 section_heading(doc, '3. Technical Demand Summary')
 
 body_para(doc,
@@ -346,9 +340,9 @@ for item, demand in tech_data:
 
 doc.add_paragraph('')
 
-# ─────────────────────────────────────────────────────────
-# 4. MAIN TECHNICAL RISKS
-# ─────────────────────────────────────────────────────────
+
+
+
 section_heading(doc, '4. Main Technical Risks')
 
 body_para(doc,
@@ -378,7 +372,7 @@ for risk, severity in risks:
         para.paragraph_format.space_after  = Pt(2)
         run = para.add_run(val)
         run.font.size = Pt(9)
-        if ci == 1:  # Severity column
+        if ci == 1:
             run.bold = True
             v = val.strip().upper()
             if 'HIGH' in v:
@@ -396,9 +390,9 @@ for risk, severity in risks:
 
 doc.add_paragraph('')
 
-# ─────────────────────────────────────────────────────────
-# 5. RELEVANCE SYNTHESIS
-# ─────────────────────────────────────────────────────────
+
+
+
 section_heading(doc, '5. Relevance Synthesis')
 
 strengths_header = doc.add_paragraph()
@@ -456,7 +450,7 @@ for profile, relevance in profiles:
 
 doc.add_paragraph('')
 
-# Callout box
+
 callout = doc.add_paragraph()
 callout.paragraph_format.space_before = Pt(4)
 callout.paragraph_format.space_after  = Pt(6)
@@ -470,7 +464,7 @@ run1 = callout.add_run(
 run1.font.size = Pt(10)
 run1.font.color.rgb = BODY_GREY
 
-# ── Save ─────────────────────────────────────────────────
+
 import sys
 out_path = sys.argv[1] if len(sys.argv) > 1 else '/Users/albus/.openclaw/workspace/offres/analyses/mutuelle-armee-datacenter-2026-05/CCTP_Analysis_Mutuelle_Armee.docx'
 doc.save(out_path)

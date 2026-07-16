@@ -2,26 +2,24 @@ require('dotenv').config();
 const https = require('https');
 const fs   = require('fs');
 
-//config 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
 const GROQ_MODEL   = "llama-3.3-70b-versatile";
 
-// Output helpers — keep file/WhatsApp output mobile-friendly.
-// WhatsApp bold uses single asterisks: *Title*.
 const IS_TTY = process.stdout.isTTY;
 const BOLD   = IS_TTY ? (text) => `\x1b[1m${text}\x1b[0m` : (text) => `*${text}*`;
 const WIDTH  = IS_TTY && process.stdout.columns && process.stdout.columns > 10 ? process.stdout.columns : 24;
 const LINE  = (char = IS_TTY ? '─' : '-') => char.repeat(WIDTH);
 
+// Returns today’s date.
 function today() {
   return new Date().toISOString().slice(0,10);
 }
 
-// Cache config
 const CACHE_DIR   = '/tmp/tuneps_cache';
-const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 1 month
+const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const PROFILE_FILTER_VERSION = 'profile-filter-v10';
 
+// Builds the cache key.
 function getCacheKey() {
   const crypto = require('crypto');
   const modeArgs = process.argv.slice(6).filter((arg, i, arr) => {
@@ -33,6 +31,7 @@ function getCacheKey() {
   return crypto.createHash('md5').update(key).digest('hex');
 }
 
+// Reads cached scan results.
 function cacheGet(key) {
   try {
     const file = `${CACHE_DIR}/${key}.json`;
@@ -43,6 +42,7 @@ function cacheGet(key) {
   } catch { return null; }
 }
 
+// Writes cached scan results.
 function cacheSet(key, data) {
   try {
     require('fs').mkdirSync(CACHE_DIR, { recursive: true });
@@ -55,7 +55,6 @@ const DATE_TO       = process.argv[3] || DATE_FROM;
 const BUYER_FILTER  = process.argv[4] || "";
 const DEADLINE_DAYS = parseInt(process.argv[5]) || 0;
 
-// Handle flags
 let outputFile = null;
 let rawJsonFile = null;
 let includeRefs = [];
@@ -78,15 +77,12 @@ if (includeRefsIdx !== -1 && remainingArgs[includeRefsIdx + 1]) {
 }
 profileFilter = remainingArgs.includes('--profile-filter');
 
-// If outputFile set, override console.log to write synchronously to file
 if (outputFile) {
   const ffs = require('fs');
-  ffs.writeFileSync(outputFile, ''); // clear file first
+  ffs.writeFileSync(outputFile, '');
   console.log = (...args) => ffs.appendFileSync(outputFile, args.join(' ') + '\n');
   console.error = (...args) => ffs.appendFileSync(outputFile, args.join(' ') + '\n');
 }
-
-//company profile
 
 const COMPANY_PROFILE = `You are a bid analyst for a premium ICT infrastructure provider.
 The company ONLY bids on:
@@ -121,8 +117,7 @@ Tenders for "computer equipment" or "bureautique" are NOT RELEVANT.
 Return ONLY a JSON array of the numbers of relevant tenders.
 Example: [1, 3, 5] or [] if none. Only the array. Nothing else.`;
 
-// http helpers
-
+// Calls the Groq API.
 function groqRequest(body) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify(body);
@@ -153,6 +148,7 @@ function groqRequest(body) {
   });
 }
 
+// Translates text to English.
 async function translateText(text) {
   if (!text || text === 'N/A' || text === 'Sans titre') return text;
   if (!GROQ_API_KEY) return text;
@@ -173,6 +169,7 @@ async function translateText(text) {
   }
 }
 
+// Sends an HTTPS POST request.
 function httpsPost(hostname, path, body, headers={}) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify(body);
@@ -198,6 +195,7 @@ function httpsPost(hostname, path, body, headers={}) {
   });
 }
 
+// Sends an HTTPS GET request.
 function httpsGet(hostname, path) {
   return new Promise((resolve, reject) => {
     const req = https.request({
@@ -217,16 +215,16 @@ function httpsGet(hostname, path) {
   });
 }
 
+// Waits before continuing.
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-//  filters
-
+// Applies tender filters.
 function applyFilters(tenders) {
   let filtered = tenders;
 
-  // Filter 1 — by buyer name 
+
   if (BUYER_FILTER) {
     const buyers = BUYER_FILTER.toLowerCase().split('|').map(b => b.trim());
     filtered = filtered.filter(t => {
@@ -243,7 +241,7 @@ function applyFilters(tenders) {
     });
   }
 
-  // Filter 2 — by deadline 
+
   if (DEADLINE_DAYS !== 0) {
     const now = new Date();
     filtered = filtered.filter(t => {
@@ -264,7 +262,7 @@ function applyFilters(tenders) {
   return filtered;
 }
 
-//  STEP 1: FETCH ALL TENDE
+// Fetches Tuneps tenders.
 async function fetchTenders() {
   const allTenders = [];
   let page = 0;
@@ -293,7 +291,7 @@ async function fetchTenders() {
     if (!Array.isArray(list) || list.length === 0) break;
     allTenders.push(...list);
 
-    // Stop when we have fetched all available tenders
+
     if (allTenders.length >= total || list.length < 50) break;
 
     page++;
@@ -302,7 +300,7 @@ async function fetchTenders() {
   return allTenders;
 }
 
-// STEP 2: AI FILTERI
+// Filters tenders with the LLM.
 async function filterWithLLM(tenders) {
   if (tenders.length === 0) return [];
 
@@ -377,6 +375,7 @@ Return ONLY the JSON array, nothing else.`;
   return relevant;
 }
 
+// Normalizes text for matching.
 function normalizeText(text) {
   return String(text || '')
     .toLowerCase()
@@ -386,6 +385,7 @@ function normalizeText(text) {
     .trim();
 }
 
+// Checks tender profile relevance.
 function isProfileRelevantTender(tender) {
   const title = normalizeText([
     tender.bidNmFr,
@@ -395,7 +395,7 @@ function isProfileRelevantTender(tender) {
 
   if (!title) return false;
 
-  // Strong exclusions learned from the operating profile and user corrections.
+
   const genericOrBasic = [
     /\bequipement informatique\b/,
     /\bmateriel informatique\b/,
@@ -503,18 +503,19 @@ function isProfileRelevantTender(tender) {
   const hasStrongSignal = strongSignals.some(rx => rx.test(title));
   if (!hasStrongSignal) return false;
 
-  // Generic/basic IT remains excluded unless a strong infrastructure/security/network signal is present.
+
   const isGeneric = genericOrBasic.some(rx => rx.test(title));
   if (isGeneric && !hasStrongSignal) return false;
 
   return true;
 }
 
+// Filters tenders with profile rules.
 function filterWithProfileRules(tenders) {
   return tenders.filter(isProfileRelevantTender);
 }
 
-// STEP 3: FETCH DETAILS
+// Fetches tender details.
 async function fetchDetail(tender) {
   const id = tender.epBidMasterId || tender.bidNo;
   try {
@@ -554,7 +555,7 @@ async function fetchDetail(tender) {
   }
 }
 
-// STEP 4: DISPLAY RESULTS (TEXT)
+// Displays text results.
 async function displayResultsText(relevant, details, totalFetched, executionTime) {
   const date = new Date().toLocaleDateString('fr-TN');
 
@@ -650,7 +651,7 @@ async function displayResultsText(relevant, details, totalFetched, executionTime
   console.log();
 }
 
-// STEP 4: DISPLAY RESULTS (JSON)
+// Handles display results json.
 function displayResultsJSON(relevant, details, totalFetched, executionTime) {
   const tenders = relevant.map((t, idx) => {
     const d   = details[idx] || {};
@@ -693,7 +694,7 @@ function displayResultsJSON(relevant, details, totalFetched, executionTime) {
   console.log(JSON.stringify(result, null, 2));
 }
 
-// MAIN 
+// Runs the script.
 async function main() {
   const needsGroq = !rawJsonFile && includeRefs.length === 0 && !profileFilter;
   if (needsGroq && !GROQ_API_KEY) {
@@ -703,11 +704,11 @@ async function main() {
 
   const start = Date.now();
 
-  // Check cache first for final text reports only
+
   const cacheKey = getCacheKey();
   const cached = (!rawJsonFile && includeRefs.length === 0) ? cacheGet(cacheKey) : null;
   if (cached) {
-    // Restore and display cached text directly
+
     if (outputFile) {
       require('fs').writeFileSync(outputFile, cached.text);
     } else {
@@ -716,11 +717,11 @@ async function main() {
     return;
   }
 
-  // Step 1 — fetch ALL tenders (no page limit)
+
   const apiTenders = await fetchTenders();
   const totalFetched = apiTenders.length;
 
-  // Step 1b — apply code filters (buyer + deadline, independent)
+
   const tenders = applyFilters(apiTenders);
 
   if (rawJsonFile) {
@@ -757,7 +758,7 @@ async function main() {
     return;
   }
 
-  // Step 2 — relevance filter
+
   const aiRelevant = includeRefs.length > 0
     ? tenders.filter(t => includeRefs.includes(String(t.bidNo || '').trim()))
     : profileFilter
@@ -784,24 +785,24 @@ async function main() {
     return;
   }
 
-  // Step 3 — fetch details for relevant only
+
   const details = [];
   for (const t of aiRelevant) {
     const d = await fetchDetail(t);
     details.push(d);
   }
 
-  // Step 4 — display
+
   const executionTime = ((Date.now() - start) / 1000).toFixed(1);
   await displayResultsText(aiRelevant, details, totalFetched, executionTime);
 
-  // Get the text that was just printed (read from the output file if set, otherwise already in buffer)
+
   let text = '';
   if (outputFile) {
     text = require('fs').readFileSync(outputFile, 'utf8');
   }
 
-  // Cache the full output text
+
   cacheSet(cacheKey, { cachedAt: new Date().toISOString(), text });
 }
 

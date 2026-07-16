@@ -1,15 +1,3 @@
-"""
-step5_analyse.py — Query ChromaDB, call Groq LLM, produce analysis JSON + HTML report.
-
-Reads:  chroma_db/              (ChromaDB built by step4)
-        output/*_chunks.json    (to discover tenders)
-        config/company_profile.json
-        config/analysis_prompts.json
-        .env                    (GROQ_API_KEY)
-
-Writes: output/<tender_id>_analysis.json  (single JSON file per tender)
-        output/<tender_id>_report.html  (generated but not required — skipped by default)
-"""
 
 import json
 import os
@@ -26,7 +14,7 @@ from sentence_transformers import SentenceTransformer
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-# ── Paths ──────────────────────────────────────────────────────────────────────
+
 ROOT        = Path(__file__).parent
 OUTPUT_DIR  = Path(os.environ.get("RFP_OUTPUT_DIR", ROOT / "output"))
 CHROMA_DIR  = Path(os.environ.get("RFP_CHROMA_DIR", ROOT / "chroma_db"))
@@ -39,8 +27,9 @@ MAX_TOKENS      = 6000
 MAX_CHUNKS      = 20
 TOP_K_PER_QUERY = 7
 
-# ── Config loading ─────────────────────────────────────────────────────────────
 
+
+# Loads config.
 def load_config() -> tuple[dict, dict]:
     with open(CONFIG_DIR / "company_profile.json", encoding="utf-8") as f:
         profile = json.load(f)
@@ -49,10 +38,9 @@ def load_config() -> tuple[dict, dict]:
     return profile, prompts
 
 
-# ── Tender grouping ────────────────────────────────────────────────────────────
 
+# Handles discover tenders.
 def discover_tenders() -> dict[str, list[str]]:
-    """Return {tender_id: [source_file, ...]} — all documents grouped as one offer."""
     tenders: dict[str, list[str]] = {}
     for path in sorted(OUTPUT_DIR.glob("*_chunks.json")):
         with open(path, encoding="utf-8") as f:
@@ -69,8 +57,8 @@ def discover_tenders() -> dict[str, list[str]]:
     return tenders
 
 
-# ── RAG retrieval ──────────────────────────────────────────────────────────────
 
+# Loads query embeddings.
 def load_query_embeddings() -> dict:
     path = OUTPUT_DIR / "_rag_query_embeddings.json"
     if not path.exists():
@@ -85,7 +73,7 @@ def load_query_embeddings() -> dict:
         print(f"  [WARN] Could not load cached query embeddings: {exc}")
     return {}
 
-
+# Handles retrieve chunks.
 def retrieve_chunks(
     collection,
     embed_model,
@@ -137,8 +125,8 @@ def retrieve_chunks(
     return retrieved[:MAX_CHUNKS]
 
 
-# ── Prompt building ────────────────────────────────────────────────────────────
 
+# Builds user prompt.
 def build_user_prompt(
     profile: dict,
     prompts: dict,
@@ -151,6 +139,7 @@ def build_user_prompt(
         for pl in profile["product_lines"]
     )
 
+    # Handles trim.
     def _trim(text: str, max_words: int = 300) -> str:
         words = text.split()
         return " ".join(words[:max_words]) + (" …" if len(words) > max_words else "")
@@ -184,8 +173,8 @@ Extracted content ({len(chunks)} sections):
 {prompts["output_schema_description"]}"""
 
 
-# ── Groq LLM call ─────────────────────────────────────────────────────────────
 
+# Handles call groq.
 def call_groq(client: Groq, system: str, user: str) -> str:
     response = client.chat.completions.create(
         model=GROQ_MODEL,
@@ -198,14 +187,13 @@ def call_groq(client: Groq, system: str, user: str) -> str:
     )
     return response.choices[0].message.content.strip()
 
-
+# Parses llm response.
 def parse_llm_response(raw: str) -> dict:
     text = raw.strip()
-    # Strip markdown code fences if present
+
     text = re.sub(r"^```(?:json)?\s*", "", text)
     text = re.sub(r"\s*```$", "", text.strip())
     return json.loads(text.strip())
-
 
 REQUIRED_KEYS = {
     "relevant", "relevance_score", "relevance_level",
@@ -213,10 +201,11 @@ REQUIRED_KEYS = {
     "summary", "recommendation", "recommendation_reason",
 }
 
+# Validates analysis.
 def validate_analysis(data: dict) -> bool:
     return REQUIRED_KEYS.issubset(data.keys())
 
-
+# Analyses tender.
 def analyse_tender(
     client: Groq,
     profile: dict,
@@ -269,13 +258,13 @@ def analyse_tender(
     }
 
 
-# ── HTML report ────────────────────────────────────────────────────────────────
 
 _COLOR_BID    = "#2E7D32"
 _COLOR_REVIEW = "#F57C00"
 _COLOR_SKIP   = "#C62828"
 _COLOR_BLUE   = "#1565C0"
 
+# Handles rec color.
 def _rec_color(rec: str) -> str:
     return {
         "BID":    _COLOR_BID,
@@ -283,13 +272,13 @@ def _rec_color(rec: str) -> str:
         "SKIP":   _COLOR_SKIP,
     }.get(rec.upper(), _COLOR_BLUE)
 
-
+# Scores color.
 def _score_color(score: int) -> str:
     if score >= 70:   return _COLOR_BID
     if score >= 40:   return _COLOR_REVIEW
     return _COLOR_SKIP
 
-
+# Scores bar.
 def _score_bar(score: int) -> str:
     color = _score_color(score)
     return (
@@ -298,7 +287,7 @@ def _score_bar(score: int) -> str:
         f'</div> <span style="color:{color};font-weight:bold;">{score}/100</span>'
     )
 
-
+# Handles fmt product lines.
 def _fmt_product_lines(matched: list) -> str:
     if not matched:
         return "<p style='color:#777;'>None matched.</p>"
@@ -324,7 +313,7 @@ def _fmt_product_lines(matched: list) -> str:
         "</tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
     )
 
-
+# Handles fmt requirements.
 def _fmt_requirements(reqs: list) -> str:
     if not reqs:
         return "<p style='color:#777;'>None extracted.</p>"
@@ -355,7 +344,7 @@ def _fmt_requirements(reqs: list) -> str:
         "</tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
     )
 
-
+# Handles generate html.
 def generate_html(result: dict, profile: dict) -> str:
     a         = result["analysis"]
     tender_id = result["tender_id"]
@@ -443,15 +432,15 @@ def generate_html(result: dict, profile: dict) -> str:
 </html>"""
 
 
-# ── Console summary ────────────────────────────────────────────────────────────
 
 ANSI = {
-    "BID":    "\033[92m",  # bright green
-    "REVIEW": "\033[93m",  # bright yellow
-    "SKIP":   "\033[91m",  # bright red
+    "BID":    "\033[92m",
+    "REVIEW": "\033[93m",
+    "SKIP":   "\033[91m",
     "RESET":  "\033[0m",
 }
 
+# Handles print summary.
 def print_summary(result: dict):
     a      = result["analysis"]
     rec    = str(a.get("recommendation", "SKIP")).upper()
@@ -481,8 +470,8 @@ def print_summary(result: dict):
     print(f"{'='*60}\n")
 
 
-# ── Main ───────────────────────────────────────────────────────────────────────
 
+# Runs the script.
 def main():
     load_dotenv(Path(os.environ.get("RFP_ENV_FILE", Path.home() / ".tuneps_data" / "rfp-pipeline" / ".env")))
 
@@ -541,7 +530,6 @@ def main():
             continue
 
     print("All tenders processed.")
-
 
 if __name__ == "__main__":
     main()
