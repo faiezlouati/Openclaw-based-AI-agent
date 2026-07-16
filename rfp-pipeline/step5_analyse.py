@@ -35,6 +35,7 @@ CONFIG_DIR  = Path(os.environ.get("RFP_CONFIG_DIR", ROOT / "config"))
 MODEL_NAME      = "paraphrase-multilingual-mpnet-base-v2"
 COLLECTION_NAME = "rfp_chunks"
 GROQ_MODEL      = "llama-3.3-70b-versatile"
+MAX_TOKENS      = 6000
 MAX_CHUNKS      = 20
 TOP_K_PER_QUERY = 7
 
@@ -189,7 +190,7 @@ def call_groq(client: Groq, system: str, user: str) -> str:
     response = client.chat.completions.create(
         model=GROQ_MODEL,
         temperature=0,
-        max_tokens=2000,
+        max_tokens=MAX_TOKENS,
         messages=[
             {"role": "system", "content": system},
             {"role": "user",   "content": user},
@@ -525,6 +526,13 @@ def main():
             json_path = OUTPUT_DIR / f"{tender_id}_analysis.json"
             with open(json_path, "w", encoding="utf-8") as f:
                 json.dump(result, f, ensure_ascii=False, indent=2)
+
+            report_md = result.get("analysis", {}).get("report_markdown")
+            if isinstance(report_md, str) and report_md.strip():
+                md_path = OUTPUT_DIR / f"{tender_id}_analysis.md"
+                with open(md_path, "w", encoding="utf-8") as f:
+                    f.write(report_md.strip() + "\n")
+                print(f"  Markdown report saved to: output/{tender_id}_analysis.md")
 
             print_summary(result)
 

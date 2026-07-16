@@ -1,152 +1,99 @@
-# CCAP Analyse — [OFFRE ID]
-## Acheteur : [ACHETEUR]
-## Objet : [OBJET]
-## Date : [DATE]
-## Analyse par : Tuneps Analyst
-
----
+# CCAP ANALYSIS — [TENDER REFERENCE]
+## Administrative Tender Document | [AUTHORITY]
 
 ## 1. DOCUMENT OVERVIEW
 
-| Champ | Détail |
+| Field | Detail |
 |-------|--------|
-| **Acheteur** | [ACHETEUR] |
-| **Adresse** | [ADRESSE] |
-| **Objet** | [OBJET] |
-| **Portée** | [PORTÉE] |
-| **Langue** | Arabe, Français, Anglais |
-| **Devise** | TND |
-| **Cadre juridique** | Order 1039/2014, CCAP Général, Code des Obligations |
+| Authority | [Authority / buyer] |
+| Project | [Project title / object] |
+| Tender Reference | [Reference] |
+| Document Type | Cahier des Clauses Administratives Particulières (CCAP) |
+| Language | [Arabic / French / English / Mixed] |
+| Currency | [TND / other] |
+| Bid Validity | [Validity period] |
+| Temporary Guarantee | [Amount] |
 
----
+## 2. PARTICIPATION CONDITIONS
 
-## 2. TENDER STRUCTURE
+### Article 2 — Scope
+[Lot structure, item count, whether partial bids are accepted.]
 
-### 2.1 — Composantes de soumission
+### Article 3 — Eligibility
+[Professional, technical, financial, registration, or sector eligibility conditions.]
 
-| Composante | Contenu |
-|-----------|---------|
-| Offre financière | Document d'engagement financier + détail estimatif |
-| Offre technique | Spécifications signées + fiches techniques |
-| Documents administratifs | Voir liste ci-dessous |
+### Article 4 — Access to Documents
+[How tender documents are accessed, e.g. TUNEPS portal.]
 
-### 2.2 — Documents administratifs requis
+## 3. BID COMPONENTS
 
-| Document | Méthode de soumission |
-|----------|----------------------|
-| Garantie financière temporaire | Copie papier |
-| Déclaration d'honneur — non-influence | Via TUNEPS |
-| Déclaration d'honneur — ex-employé défense | Via TUNEPS |
-| Carte d'identité directeur + copie + 2 photos | Copie papier |
-| Registre National des Entreprises (RNE) ≤ 3 mois | Copie papier |
+### 3.1 Financial Offer
 
----
+| Document | Requirements |
+|----------|--------------|
+| Financial Commitment Letter | [Completion/signature/stamp/template requirements] |
+| Detailed Estimative Invoice | [Itemization/signature/stamp requirements] |
 
-## 3. FINANCIAL GUARANTEES
+### 3.2 Technical Offer
 
-| Élément | Montant | Règles |
-|--------|--------|--------|
-| **Garantie temporaire** | TND | Couvrir toute la période de validité (120 jours) |
-| **Garantie finale** | 3% du contrat initial | Soumise dans les 20 jours après notification |
+| Document | Requirements |
+|----------|--------------|
+| Signed CCTP | [Initial/sign/stamp requirements] |
+| Technical Bid Forms | [Template/completion requirements] |
+| Technical Data Sheets | [Per-item datasheet requirements] |
 
----
+### 3.3 Administrative Documents
 
-## 4. OFFER VALIDITY
+| Document | Requirements |
+|----------|--------------|
+| Temporary Financial Guarantee | [Form, validity, offline/online submission] |
+| Declaration of Non-Collusion | [Submission method] |
+| Declaration — No Conflict of Interest | [Submission method] |
+| Manager Identification Card | [ID copy/photos/extra forms] |
+| Company Registry Extract | [Age/validity/submission method] |
 
-| Élément | Détail |
-|--------|--------|
-| **Durée de validité** | 120 jours à compter du lendemain de la date limite de soumission |
+## 4. FINANCIAL GUARANTEE
 
----
+| Element | Detail |
+|---------|--------|
+| Amount | [Amount] |
+| Form | [Bank guarantee / solidarity undertaking / other] |
+| Validity | [Must cover bid validity period] |
+| Release — Non-selected bidders | [Rule] |
+| Release — Selected bidder | [Rule] |
+| Release — Automatically rejected | [Rule] |
+| Seizure — Withdrawal during validity | [Rule] |
+| Seizure — Contract refusal | [Rule] |
+| Seizure — No final guarantee | [Rule] |
 
-## 5. EVALUATION CRITERIA
+## 5. SUBMISSION RULES
 
-1. **Phase 1** — Validation financière (documents + garantie temporaire)
-2. **Phase 2** — Conformité technique (moins-disant techniquement conforme)
-3. **Phase 3** — Contrôle de sécurité (exigence défense nationale)
+**Online Submission**
+- [Registration and online submission requirements]
 
-**Base d'attribution** : Prix le moins-disant
+**Late Submissions**
+- [Automatic rejection / no exceptions]
 
----
+**Modifications**
+- [Rules before and after deadline]
 
-## 6. PRICING & ADJUSTMENT RULES
+**Oversized Technical Bids**
+- [Offline submission allowance and declaration requirements]
 
-| Règle | Détail |
-|------|--------|
-| Prix unitaires | Fixes pour toute la durée du contrat |
-| Ajustement | Si délai > 120 jours entre soumission et notification |
-| Plancher ajustement | 0,5/1000 par jour, plafond 2% du contrat |
+## 6. EVALUATION
 
----
+| Phase | Activity |
+|-------|----------|
+| Stage 1 | [Administrative compliance + financial guarantee verification] |
+| Stage 2 | [Financial correction / ranking] |
+| Stage 3 | [Technical compliance / lowest compliant bidder / award basis] |
 
-## 7. PREFERENTIAL MARGIN
+## 7. KEY RISKS & OBSERVATIONS
 
-- Produits tunisiens preferes si qualité équivalente
-- Marge préférentielle : prix tunisiens jusqu'à 20% plus élevés que étrangers
+| # | Risk / Observation | Severity |
+|---|--------------------|----------|
+| 1 | [Risk or positive observation] | High / Medium / Low / Positive |
+| 2 | [Risk or positive observation] | High / Medium / Low / Positive |
+| 3 | [Risk or positive observation] | High / Medium / Low / Positive |
 
----
-
-## 8. CONTRACT IMPLEMENTATION
-
-| Élément | Détail |
-|--------|--------|
-| Délai de livraison | 120 jours calendaires après approbation du contrat |
-| Acompte | Jusqu'à 10% contre garantie |
-| Garantie finale | 3% de la valeur initiale du contrat |
-| Délai de paiement | Max 30 jours après livraison et mise en service |
-| Variante de quantité | ±20% sans renégociation |
-
----
-
-## 9. DELIVERY & ACCEPTANCE
-
-| Phase | Délai | Détail |
-|-------|-------|--------|
-| Inspection | 15 jours après livraison | Signée par acheteur + fournisseur |
-| Acceptation provisoire | 1 mois après inspection | Conforme aux spécifications techniques |
-| Acceptation finale | 1 mois après expiration garantie | Pleine conformité |
-| Période de garantie | 2 ans après acceptation provisoire | Couvre tous les équipements |
-
----
-
-## 10. PENALTIES & SANCTIONS
-
-| Élément | Règle |
-|--------|-------|
-| Pénalité de retard | 1/1000 par jour de la valeur des marchandises livrées en retard (HTVA) |
-| Pénalité maximale | 5% du montant final du contrat |
-| Au-delà du maximum | L'acheteur peut résilier et s'approvisionner ailleurs |
-| Équipement rejeté | Remplacement sous 8 jours ; remplacement gratuit sous 30 jours |
-
----
-
-## 11. KEY DEADLINES SUMMARY
-
-| Événement | Délai |
-|----------|-------|
-| Demandes de clarification | 15 jours avant la date limite de soumission |
-| Publication des additifs | Au moins 10 jours avant la date limite de soumission |
-| Validité de l'offre | 120 jours |
-| Acompte | Jusqu'à 10% contre garantie |
-| Soumission garantie finale | 20 jours après notification du marché |
-| Délai de livraison | 120 jours après approbation du contrat |
-| Paiement | 30 jours après livraison et mise en service |
-| Garantie | 2 ans après acceptation provisoire |
-
----
-
-## 12. CRITICAL BIDDER CHECKLIST
-
-- [ ] Soumettre pour tous les postes (pas d'offres partielles)
-- [ ] Payer la garantie temporaire de TND
-- [ ] S'inscrire sur TUNEPS avant la date limite
-- [ ] Soumettre les offres financières + techniques via TUNEPS
-- [ ] Soumettre les garanties sur support papier à l'adresse indicated
-- [ ] Inclure RNE (≤ 3 mois), carte d'identité, déclarations sur l'honneur via TUNEPS
-- [ ] Pas d'anciens employés du Ministère de la Défense
-- [ ] Toutes les pages des spécifications techniques signées, paraphées et cachetées
-- [ ] Certificat d'origine tunisienne si applicable (pour la préférence de 20%)
-
----
-
-*Analyse produite le [DATE]. Document destine à un usage interne.*
+*CCAP Analysis | Tender Ref: [TENDER REFERENCE] | Generated by Tuneps Analyst*

@@ -72,19 +72,35 @@ If user references a specific ministry, set BUYER_FILTER to the official name.
 2. Extract DEADLINE_DAYS from deadline/-opening expressions
 3. Map any ministry nickname to official name → BUYER_FILTER
 
-### Step 2 - Run the script with --output
+### Step 2 - Fast one-pass scan (default)
+
+Use the script's strict profile filter by default. It fetches candidates, applies the Huawei-scope relevance rules, fetches details only for relevant refs, and renders the final report in one run.
 
 ```
-cd ~/.openclaw/workspace/skills/tuneps-scrape && node scripts/tuneps.js DATE_FROM DATE_TO BUYER_FILTER DEADLINE_DAYS --output /tmp/tuneps_output.txt
+cd ~/.openclaw/workspace/skills/tuneps-scrape && node scripts/tuneps.js DATE_FROM DATE_TO BUYER_FILTER DEADLINE_DAYS --profile-filter --output /tmp/tuneps_output.txt
 ```
 
-**Cache:** Results are cached for 1 month at `/tmp/tuneps_cache/{hash}.json` (key = MD5 of args). Running the same query again returns cached text instantly.
+### Step 3 - Context review safety net
 
-### Step 3 - Read and display the output
+Run this review if the fast output looks suspicious, returns 0 results, or the user challenges relevance:
+
+```
+cd ~/.openclaw/workspace/skills/tuneps-scrape && node scripts/tuneps.js DATE_FROM DATE_TO BUYER_FILTER DEADLINE_DAYS --raw-json /tmp/tuneps_candidates.json
+```
+
+Read `/tmp/tuneps_candidates.json`. Classify titles with the current OpenClaw model using title context and ICT/Huawei/telecom business scope, not keyword matching only. If a title logically describes telecom/ICT infrastructure, include it even if the exact keyword rule missed it. Then render corrected refs:
+
+```
+cd ~/.openclaw/workspace/skills/tuneps-scrape && node scripts/tuneps.js DATE_FROM DATE_TO BUYER_FILTER DEADLINE_DAYS --include-refs REF1,REF2,REF3 --output /tmp/tuneps_output.txt
+```
+
+Do not use Groq for title classification unless explicitly reverting/debugging.
+
+### Step 4 - Read and display the output
 
 After the script completes, read the file at `/tmp/tuneps_output.txt` and display its contents **exactly as-is** in your message (as the first message, not as a tool result).
 
-### Step 4 - Done
+### Step 6 - Done
 
 ## Authority Abbreviations
 
@@ -111,3 +127,25 @@ Do not create active tender data under `~/.openclaw/workspace/offres`; its data 
 - For "before June" type queries: DATE_FROM/DATE_TO = publication range, DEADLINE_DAYS = days until cutoff
 - Default DEADLINE_DAYS to 0 (no filter) unless user explicitly mentions opening/deadline constraints
 - Display the complete script output without truncation
+## Tuneps Login-Based RFP Download Helpers
+
+Credential capture and RFP document download are available, but only when the user explicitly asks for them.
+
+Scripts:
+- `scripts/capture_tuneps_credentials.py` — after the user manually logs in to Tuneps in Chrome with the Tuneps key/account, captures the `cookiesession1` cookie and JWT/token into `~/.tuneps_data/credentials.json`.
+- `scripts/download_tuneps_rfp_documents.py` — downloads RFP attachments only for explicitly provided tender IDs into `~/.tuneps_data/documents/<ref>/`.
+
+Rules:
+- Do not capture credentials unless the user asks.
+- Do not download RFP documents unless the user asks and provides/identifies the tender ID.
+- Never use a default tender list for downloads.
+- Store all downloaded RFP documents under `~/.tuneps_data/documents/<ref>/`.
+- If credentials are missing or expired, ask the user to log in to Tuneps in Chrome, then run the capture script.
+
+Commands:
+```bash
+cd ~/.openclaw/workspace/skills/tuneps-scrape
+python3 -m pip install -r requirements.txt
+python3 scripts/capture_tuneps_credentials.py
+python3 scripts/download_tuneps_rfp_documents.py 20260600248
+```

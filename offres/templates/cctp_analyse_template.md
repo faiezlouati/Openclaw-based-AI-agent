@@ -1,98 +1,82 @@
 # CCTP RELEVANCE ANALYSIS
-## [PROJECT TITLE]
-
----
+## [PROJECT TITLE / BUYER]
 
 ## 1. Extraction and Mapping
 
-[Describe the buyer's situation, the project goal, and the overall contract structure in 2–3 concise paragraphs. Cover: who the buyer is, what they are procuring, the scope (hardware/software/services), execution timeline, and any notable structural features such as indissociable items or mandatory migrations.]
-
-**Items summary:**
+[Describe the buyer, project objective, overall contract structure, hardware/software/services scope, execution timeline if available, and any notable structural requirement such as a single indivisible lot or mandatory migration. Keep this section factual and concise.]
 
 | # | Item | Qty | Category |
 |---|------|-----|----------|
-| 1 | | | |
-| 2 | | | |
-| 3 | | | |
-| 4 | | | |
-| 5 | | | |
-| 6 | | | |
-| 7 | | | |
-| 8 | | | |
+| 1 | [Item] | [Qty] | [Compute / Storage / Network / Security / Software / Infrastructure] |
+| 2 | [Item] | [Qty] | [Category] |
+| 3 | [Item] | [Qty] | [Category] |
+| 4 | [Item] | [Qty] | [Category] |
 
 **Included services:**
-- [Describe what services are bundled into the contract — installation, migration, training, documentation, support, etc.]
-
----
+- [Installation, racking, cabling, and physical deployment]
+- [Configuration of supplied hardware/software]
+- [Migration requirements]
+- [Testing and go-live]
+- [Training / knowledge transfer]
+- [Documentation and support]
 
 ## 2. Qualification Requirements
 
-[Describe what conditions a bidder must satisfy to be eligible. Note that failure on any line means automatic disqualification at the technical evaluation stage.]
+Technical and product-related conditions defined in the CCTP that a bidder must satisfy to be eligible. Failure on any mandatory line may cause technical disqualification.
 
 | Category | Requirement |
 |----------|-------------|
-| Manufacturer authorisation | |
-| Brand constraint | |
-| Firewall vendor | |
-| Firewall certification | |
-| Hardware certifications | |
-| Training capability | |
-| Support capability | |
-| Documentation | |
-
----
+| Manufacturer authorisation | [MAF / authorization requirement, if any] |
+| Brand constraint | [Same-brand / approved-brand constraint, if any] |
+| Vendor certification | [Gartner / Common Criteria / ISO / other requirements] |
+| Hardware certifications | [Standards and certifications] |
+| Training capability | [Accredited center / certified trainer / CV requirements] |
+| Support capability | [Support duration, SLA, manufacturer support] |
+| Documentation | [Language, update, configuration dossier requirements] |
 
 ## 3. Technical Demand Summary
 
-[Describe what the CCTP asks for, item by item. This is a factual summary — no vendor, SKU, or product family should be recommended.]
+Headline technical demands per item. Detailed specifications remain in the CCTP source document. Do not recommend vendor SKUs in this section.
 
 | Item | Key Demands |
 |------|-------------|
-| [Virtualization servers (×3)] | [Full specs in plain language: form factor, CPU, RAM, storage, network, redundancy, OS support, certifications] |
-| [Virtualization software] | [Hypervisor type, cluster requirements, licensing model, migration requirements, admin interface] |
-| [Storage array] | [Brand constraint, controller config, cache, protocols, disk types/counts, RAID, features] |
-| [Backup server] | [Form factor, CPU, RAM, disks, network, OS support] |
-| [Backup software] | [License model, agent requirements, backup modes, deduplication, restore options, replication, tape] |
-| [Datacenter switches (×2)] | [Layer, switching capacity, ports, VLANs, PoE, L2/L3 features, security, management] |
-| [Firewall (×2)] | [Gartner MQ requirement, throughput, VPN, NGFW features (IPS/AV/sandboxing/web filter), HA, certifications] |
-| [Rack cabinet] | [Size, load capacity, cooling, PDU, warranty] |
-
----
+| [Item 1] | [Main factual specifications: form factor, CPU/RAM/storage/network/redundancy/software/features] |
+| [Item 2] | [Main factual specifications] |
+| [Item 3] | [Main factual specifications] |
+| [Item 4] | [Main factual specifications] |
 
 ## 4. Main Technical Risks
 
-[Describe the principal technical execution risks extracted from the CCTP. Contractual and financial risks (penalties, payment terms, guarantees) are excluded as they belong to the CCAP.]
+Principal technical execution risks identified from the CCTP content. Contractual and financial risks are excluded because they belong to the CCAP analysis.
 
 | Risk | Severity |
 |------|----------|
-| [Risk description] | High / Medium / Low |
-| | |
-| | |
-| | |
-
----
+| [Technical risk] | High / Medium / Low |
+| [Technical risk] | High / Medium / Low |
+| [Technical risk] | High / Medium / Low |
 
 ## 5. Relevance Synthesis
 
 **Strengths of this opportunity:**
-- [Bullet — strategic value, scope, specs, procurement quality, support contract value, etc.]
+- [Strategic value]
+- [Portfolio fit]
+- [Reference value]
+- [Support / recurring value]
 
 **Challenges:**
-- [Bullet — execution timeline, critical-path risks, constraints, screening, FX, etc.]
+- [Execution risk]
+- [OEM / certification / partnership constraints]
+- [Migration / training / support constraints]
 
 **Relevance by vendor profile:**
 
 | Profile | Relevance |
 |---------|-----------|
-| [Tier-1 OEM with strong North African channel] | [Highly / Moderately / Low relevant — brief justification] |
-| [Tier-2 OEM with limited local presence] | |
-| [Local integrator without OEM-level partnership] | |
-| [New entrant without local references] | |
+| Huawei | Top relevant — this offer is top relevant for Huawei because it fits Huawei ICT infrastructure portfolio ([datacenter / servers / storage / networking / cybersecurity / cloud / virtualization — keep only applicable domains]). |
+| Tier-1 OEM with strong North African channel | [Highly relevant / Moderately relevant / Low relevance — justification] |
+| Tier-2 OEM with limited local presence | [Relevance — justification] |
+| Local integrator without OEM-level partnership | [Relevance — justification] |
 
----
-
-*This tender is structurally relevant for [target vendor profile]. Management validation is required on the following items before a binding offer is submitted: 1) [item 1]; 2) [item 2]; 3) [item 3].*
-
----
+This offer is top relevant for Huawei. [Add one short sentence identifying the main management validations required before pursuing.]
 
 *Analysis produced by Tuneps Analyst. Document intended for internal use.*

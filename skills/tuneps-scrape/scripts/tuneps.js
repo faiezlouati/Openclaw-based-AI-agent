@@ -6,11 +6,12 @@ const fs   = require('fs');
 const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
 const GROQ_MODEL   = "llama-3.3-70b-versatile";
 
-// Output helpers — detect TTY vs non-TTY for bold + line width
+// Output helpers — keep file/WhatsApp output mobile-friendly.
+// WhatsApp bold uses single asterisks: *Title*.
 const IS_TTY = process.stdout.isTTY;
-const BOLD   = IS_TTY ? (text) => `\x1b[1m${text}\x1b[0m` : (text) => `**${text}**`;
-const WIDTH  = (process.stdout.columns && process.stdout.columns > 10) ? process.stdout.columns : 35;
-const LINE  = (char = '─') => char.repeat(WIDTH);
+const BOLD   = IS_TTY ? (text) => `\x1b[1m${text}\x1b[0m` : (text) => `*${text}*`;
+const WIDTH  = IS_TTY && process.stdout.columns && process.stdout.columns > 10 ? process.stdout.columns : 24;
+const LINE  = (char = IS_TTY ? '─' : '-') => char.repeat(WIDTH);
 
 function today() {
   return new Date().toISOString().slice(0,10);
@@ -19,10 +20,16 @@ function today() {
 // Cache config
 const CACHE_DIR   = '/tmp/tuneps_cache';
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 1 month
+const PROFILE_FILTER_VERSION = 'profile-filter-v10';
 
 function getCacheKey() {
   const crypto = require('crypto');
-  const key = [DATE_FROM, DATE_TO, BUYER_FILTER, DEADLINE_DAYS].join('|');
+  const modeArgs = process.argv.slice(6).filter((arg, i, arr) => {
+    if (arg === '--output' || arr[i - 1] === '--output') return false;
+    if (arg === '--raw-json' || arr[i - 1] === '--raw-json') return false;
+    return true;
+  }).join('|');
+  const key = [DATE_FROM, DATE_TO, BUYER_FILTER, DEADLINE_DAYS, modeArgs, PROFILE_FILTER_VERSION].join('|');
   return crypto.createHash('md5').update(key).digest('hex');
 }
 
@@ -48,13 +55,28 @@ const DATE_TO       = process.argv[3] || DATE_FROM;
 const BUYER_FILTER  = process.argv[4] || "";
 const DEADLINE_DAYS = parseInt(process.argv[5]) || 0;
 
-// Handle --output flag: redirects stdout to a file instead of terminal
+// Handle flags
 let outputFile = null;
+let rawJsonFile = null;
+let includeRefs = [];
+let profileFilter = false;
 const remainingArgs = process.argv.slice(6);
 const outputIdx = remainingArgs.indexOf('--output');
 if (outputIdx !== -1 && remainingArgs[outputIdx + 1]) {
   outputFile = remainingArgs[outputIdx + 1];
 }
+const rawJsonIdx = remainingArgs.indexOf('--raw-json');
+if (rawJsonIdx !== -1 && remainingArgs[rawJsonIdx + 1]) {
+  rawJsonFile = remainingArgs[rawJsonIdx + 1];
+}
+const includeRefsIdx = remainingArgs.indexOf('--include-refs');
+if (includeRefsIdx !== -1 && remainingArgs[includeRefsIdx + 1]) {
+  includeRefs = remainingArgs[includeRefsIdx + 1]
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+profileFilter = remainingArgs.includes('--profile-filter');
 
 // If outputFile set, override console.log to write synchronously to file
 if (outputFile) {
@@ -355,6 +377,143 @@ Return ONLY the JSON array, nothing else.`;
   return relevant;
 }
 
+function normalizeText(text) {
+  return String(text || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isProfileRelevantTender(tender) {
+  const title = normalizeText([
+    tender.bidNmFr,
+    tender.bidNmEn,
+    tender.bidNmAr,
+  ].filter(Boolean).join(' '));
+
+  if (!title) return false;
+
+  // Strong exclusions learned from the operating profile and user corrections.
+  const genericOrBasic = [
+    /\bequipement informatique\b/,
+    /\bmateriel informatique\b/,
+    /\bequipements informatique\b/,
+    /\bequipements informatiques\b/,
+    /\bcomputer equipment\b/,
+    /\bcomputers?\b/,
+    /\bpc\b/,
+    /\blaptop/,
+    /\bdesktop/,
+    /\bposte(s)? de travail\b/,
+    /\bphotocopieur/,
+    /\bprinter/,
+    /\bscanner/,
+    /\bconsommables? informatique/,
+    /\baccessoires? pour le materiel informatique/,
+    /\bbureautique\b/,
+    /\blicences? microsoft\b/,
+    /\bsoftware assurance\b/,
+    /\blicences? de messagerie\b/,
+    /\bmicrosoft\b/,
+  ];
+
+  const strongSignals = [
+    /\bfirewalls?\b/,
+    /\bpare[- ]?feu\b/,
+    /\bsiem\b/,
+    /\bedr\b/,
+    /\bepp\b/,
+    /\bend[- ]?point protection\b/,
+    /\bcyber/,
+    /\bsecurite informatique\b/,
+    /\banti[- ]?ddos\b/,
+    /\bids\b/,
+    /\bips\b/,
+    /\bserveur/,
+    /\bserver/,
+    /\bplate[- ]?forme informatique\b/,
+    /\bheberger des applications\b/,
+    /\bhosting\b/,
+    /\bdatacenter\b/,
+    /\bdata center\b/,
+    /\bcentre de donnees\b/,
+    /\bcloud\b/,
+    /\bvirtuali[sz]ation\b/,
+    /\boracle\b/,
+    /\bweblogic\b/,
+    /\bdatabase\b/,
+    /\bdata base\b/,
+    /\bbase de donnees\b/,
+    /\bmiddleware\b/,
+    /\b(data|digital|it|ict|san|nas|server|cloud|backup|cyber|network) storage\b/,
+    /\bstorage (system|solution|array|infrastructure|server|platform)\b/,
+    /\bstockage (informatique|donnees|numerique|cloud|serveur|sauvegarde)\b/,
+    /\bbackup\b/,
+    /\bsauvegarde\b/,
+    /\bvoip\b/,
+    /\bipt\b/,
+    /\btelecom\b/,
+    /\btelecommunication\b/,
+    /\bradio[- ]?communication(s)?\b/,
+    /\bradiocommunication(s)?\b/,
+    /\bfibre optique\b/,
+    /\bgpon\b/,
+    /\bep[o]?n\b/,
+    /\b4g\b/,
+    /\b5g\b/,
+    /\bmicrowave\b/,
+    /\bfaisceau hertzien\b/,
+    /\breseau(x)? campus\b/,
+    /\breseau(x)? metropolitain\b/,
+    /\bwifi\b/,
+    /\bwi[- ]?fi\b/,
+    /\bnetwork infrastructure\b/,
+    /\binfrastructure reseau\b/,
+    /\breseau informatique\b/,
+    /\bcables? et connectiques reseaux\b/,
+    /\bconnectiques reseaux\b/,
+    /\bsysteme d.?information\b/,
+    /\bsysteme information sectoriel\b/,
+    /\binformation system\b/,
+    /\bsectoral information system\b/,
+    /\bportail des services en ligne\b/,
+    /\bplatform(e)? numerique\b/,
+    /\bdigital platform\b/,
+    /\bsolution de visioconference\b/,
+    /\bgeolocalisation\b/,
+    /\bvideosurveillance\b/,
+    /\bvideo[- ]?surveillance\b/,
+  ];
+
+  const domainExclusions = [
+    /\btubing\b/,
+    /\btubes?\b/,
+    /\bwater wells?\b/,
+    /\bpuits\b/,
+    /\bforage\b/,
+    /\baisi\b/,
+    /\bj55\b/,
+    /\bk55\b/,
+  ];
+
+  if (domainExclusions.some(rx => rx.test(title))) return false;
+
+  const hasStrongSignal = strongSignals.some(rx => rx.test(title));
+  if (!hasStrongSignal) return false;
+
+  // Generic/basic IT remains excluded unless a strong infrastructure/security/network signal is present.
+  const isGeneric = genericOrBasic.some(rx => rx.test(title));
+  if (isGeneric && !hasStrongSignal) return false;
+
+  return true;
+}
+
+function filterWithProfileRules(tenders) {
+  return tenders.filter(isProfileRelevantTender);
+}
+
 // STEP 3: FETCH DETAILS
 async function fetchDetail(tender) {
   const id = tender.epBidMasterId || tender.bidNo;
@@ -404,7 +563,7 @@ async function displayResultsText(relevant, details, totalFetched, executionTime
   console.log(`${BOLD('Period')}  : ${DATE_FROM}  to  ${DATE_TO}`);
   if (BUYER_FILTER)  console.log(`${BOLD('Buyer')}   : ${BUYER_FILTER}`);
   if (DEADLINE_DAYS) console.log(`Deadline: ${DEADLINE_DAYS > 0 ? `next ${DEADLINE_DAYS} days` : `expired last ${Math.abs(DEADLINE_DAYS)} days`}`);
-  console.log(`${BOLD('Scanned')} : ${totalFetched} tender(s) fetched `);
+  console.log(`${BOLD('Scanned')} : ${totalFetched} tender(s) fetched`);
   console.log(`${BOLD('Date')}    : ${date}`);
   console.log(`${BOLD('Results')} : ${relevant.length} relevant tender(s) identified`);
   console.log();
@@ -486,7 +645,7 @@ async function displayResultsText(relevant, details, totalFetched, executionTime
   }
 
   console.log(`${LINE()}`);
-  console.log(`  ${relevant.length} tender(s) displayed  |  Execution time: ${executionTime}s`);
+  console.log(`  ${relevant.length} tender(s) displayed`);
   console.log(`${LINE()}`);
   console.log();
 }
@@ -536,16 +695,17 @@ function displayResultsJSON(relevant, details, totalFetched, executionTime) {
 
 // MAIN 
 async function main() {
-  if (!GROQ_API_KEY) {
+  const needsGroq = !rawJsonFile && includeRefs.length === 0 && !profileFilter;
+  if (needsGroq && !GROQ_API_KEY) {
     console.error("ERROR: GROQ_API_KEY not set. Add to .env file: GROQ_API_KEY=your-key");
     process.exit(1);
   }
 
   const start = Date.now();
 
-  // Check cache first
+  // Check cache first for final text reports only
   const cacheKey = getCacheKey();
-  const cached = cacheGet(cacheKey);
+  const cached = (!rawJsonFile && includeRefs.length === 0) ? cacheGet(cacheKey) : null;
   if (cached) {
     // Restore and display cached text directly
     if (outputFile) {
@@ -563,13 +723,32 @@ async function main() {
   // Step 1b — apply code filters (buyer + deadline, independent)
   const tenders = applyFilters(apiTenders);
 
+  if (rawJsonFile) {
+    const payload = {
+      date: new Date().toISOString(),
+      period: { from: DATE_FROM, to: DATE_TO },
+      buyer: BUYER_FILTER || null,
+      totalFetched,
+      candidates: tenders.map(t => ({
+        ref: t.bidNo || '-',
+        title: t.bidNmFr || t.bidNmEn || t.bidNmAr || 'N/A',
+        authority: t.bidInstNm || '',
+        published: t.publicDt || null,
+        deadline: t.bdRecvEndDt || null,
+        epBidMasterId: t.epBidMasterId || null
+      }))
+    };
+    require('fs').writeFileSync(rawJsonFile, JSON.stringify(payload, null, 2));
+    return;
+  }
+
   if (tenders.length === 0) {
     console.log();
     console.log('TUNEPS TENDER INTELLIGENCE REPORT');
     console.log(`${BOLD('Period')}  : ${DATE_FROM}  to  ${DATE_TO}`);
     if (BUYER_FILTER)  console.log(`${BOLD('Buyer')}   : ${BUYER_FILTER}`);
     if (DEADLINE_DAYS) console.log(`Deadline: ${DEADLINE_DAYS > 0 ? `next ${DEADLINE_DAYS} days` : `expired last ${Math.abs(DEADLINE_DAYS)} days`}`);
-    console.log(`${BOLD('Scanned')} : ${totalFetched} tender(s) fetched from API`);
+    console.log(`${BOLD('Scanned')} : ${totalFetched} tender(s) fetched`);
     console.log(`${BOLD('Date')}    : ${new Date().toLocaleDateString('fr-TN')}`);
     console.log(`${BOLD('Results')} : 0 relevant tender(s) identified`);
     console.log();
@@ -578,8 +757,12 @@ async function main() {
     return;
   }
 
-  // Step 2 — AI relevance filter
-  const aiRelevant = await filterWithLLM(tenders);
+  // Step 2 — relevance filter
+  const aiRelevant = includeRefs.length > 0
+    ? tenders.filter(t => includeRefs.includes(String(t.bidNo || '').trim()))
+    : profileFilter
+      ? filterWithProfileRules(tenders)
+    : await filterWithLLM(tenders);
 
   if (aiRelevant.length === 0) {
     const executionTime = ((Date.now() - start) / 1000).toFixed(1);
@@ -588,14 +771,14 @@ async function main() {
     console.log(`${BOLD('Period')}  : ${DATE_FROM}  to  ${DATE_TO}`);
     if (BUYER_FILTER)  console.log(`${BOLD('Buyer')}   : ${BUYER_FILTER}`);
     if (DEADLINE_DAYS) console.log(`Deadline: ${DEADLINE_DAYS > 0 ? `next ${DEADLINE_DAYS} days` : `expired last ${Math.abs(DEADLINE_DAYS)} days`}`);
-    console.log(`${BOLD('Scanned')} : ${totalFetched} tender(s) fetched from API`);
+    console.log(`${BOLD('Scanned')} : ${totalFetched} tender(s) fetched`);
     console.log(`${BOLD('Date')}    : ${new Date().toLocaleDateString('fr-TN')}`);
     console.log(`${BOLD('Results')} : 0 relevant tender(s) identified`);
     console.log();
     console.log('No relevant tenders found for the specified period and criteria.');
     console.log();
     console.log(`${LINE()}`);
-    console.log(`  0 tender(s) displayed  |  Execution time: ${executionTime}s`);
+    console.log(`  0 tender(s) displayed`);
     console.log(`${LINE()}`);
     console.log();
     return;
