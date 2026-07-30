@@ -54,19 +54,19 @@ function copyDocument(src, docType) {
   const ext = path.extname(src) || '.pdf';
   const dst = path.join(docDir, `${docType}${ext.toLowerCase()}`);
   if (!fs.existsSync(src)) {
-    console.log(`⚠️  ${docType.toUpperCase()} file not found: ${src}`);
+    console.log(`  ${docType.toUpperCase()} file not found: ${src}`);
     return null;
   }
   fs.copyFileSync(src, dst);
-  console.log(`✅ ${docType.toUpperCase()} copied: ${dst}`);
+  console.log(` ${docType.toUpperCase()} copied: ${dst}`);
 
   if (ext.toLowerCase() === '.pdf') {
     try {
       const txtDst = path.join(docDir, `${docType}.txt`);
       extractPdfText(dst, txtDst);
-      console.log(`✅ ${docType.toUpperCase()} text extracted: ${txtDst}`);
+      console.log(` ${docType.toUpperCase()} text extracted: ${txtDst}`);
     } catch (e) {
-      console.log(`⚠️  ${docType.toUpperCase()} text extraction failed: ${e.message}`);
+      console.log(`  ${docType.toUpperCase()} text extraction failed: ${e.message}`);
     }
   }
   upsertDocument(docType, dst);
@@ -79,7 +79,7 @@ function sqlite(sql, params = []) {
   const escapedSql = sql;
   const res = spawnSync('sqlite3', [DB_PATH, escapedSql], { encoding: 'utf8' });
   if (res.status !== 0) {
-    console.log(`⚠️  SQLite failed: ${(res.stderr || res.stdout || '').trim()}`);
+    console.log(`  SQLite failed: ${(res.stderr || res.stdout || '').trim()}`);
   }
   return res.stdout;
 }
@@ -189,7 +189,7 @@ function fillTemplate(templatePath, destPath, vars) {
   content = content.replace(/\[OBJET\]/g, vars.object);
   content = content.replace(/\[DATE\]/g, today);
   fs.writeFileSync(destPath, content);
-  console.log(`✅ Created: ${destPath}`);
+  console.log(` Created: ${destPath}`);
 }
 
 initDb();
@@ -232,9 +232,9 @@ Storage root: ~/.tuneps_data
 *Rapport créé le ${today}*
 `;
 fs.writeFileSync(rapportPath, rapportContent);
-console.log(`✅ Created: ${rapportPath}`);
+console.log(` Created: ${rapportPath}`);
 
-console.log(`\n✅ Offer "${tenderRef}" saved in unified storage.`);
-console.log(`📂 Documents: ${docDir}`);
-console.log(`📋 Analyses: ${anaDir}`);
-console.log(`🗄️  Database: ${DB_PATH}`);
+console.log(`\n Offer "${tenderRef}" saved in unified storage.`);
+console.log(` Documents: ${docDir}`);
+console.log(` Analyses: ${anaDir}`);
+console.log(`  Database: ${DB_PATH}`);
